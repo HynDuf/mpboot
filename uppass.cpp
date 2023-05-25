@@ -2710,21 +2710,6 @@ void copyGlobalToLocalUppass(partitionList *pr, int limNodes) {
 /**
  * WARNING: Haven't tested yet.
  */
-inline bool equalStatesCmp(parsimonyNumber *uStatesVec,
-                           parsimonyNumber *vStatesVec, int stepU, int stepV,
-                           int &states) {
-    int posU = 0, posV = 0;
-    for (int k = 0; k < states; ++k) {
-        for (int i = 0; i < INTS_PER_VECTOR; ++i) {
-            if (uStatesVec[posU + i] != vStatesVec[posV + i]) {
-                return false;
-            }
-        }
-        posU += stepU;
-        posV += stepV;
-    }
-    return true;
-}
 inline bool equalDownpassAndUppass(partitionList *pr, int uNumber) {
     for (int model = 0; model < pr->numberOfPartitions; ++model) {
         size_t states = pr->partitionData[model]->states,
@@ -2777,21 +2762,6 @@ inline void setDownpassToUppassLocal(partitionList *pr, int uNumber) {
             pr->partitionData[model]->parsVectUppassLocal[i] =
                 pr->partitionData[model]->parsVect[i];
         }
-    }
-}
-/**
- * Set u = v.
- */
-inline void setStatesVec(parsimonyNumber *uStatesVec,
-                         parsimonyNumber *vStatesVec, int stepU, int stepV,
-                         int &states) {
-    int posU = 0, posV = 0;
-    for (int k = 0; k < states; ++k) {
-        for (int i = 0; i < INTS_PER_VECTOR; ++i) {
-            uStatesVec[posU + i] = vStatesVec[posV + i];
-        }
-        posU += stepU;
-        posV += stepV;
     }
 }
 void dfsRecalculateUppassFull(nodeptr u, int pNumber, partitionList *pr,
@@ -3243,156 +3213,6 @@ INT_TYPE downpassCalculate(parsimonyNumber *uVec, parsimonyNumber *v1Vec,
 /**
  * WARNING: Pls check.
  */
-void uppassInnerNodeCalculate(parsimonyNumber *uVec, parsimonyNumber *v1Vec,
-                              parsimonyNumber *v2Vec, parsimonyNumber *uUpVec,
-                              parsimonyNumber *pUpVec, int stepU, int stepV1,
-                              int stepV2, int stepUUp, int stepPUp,
-                              int &states) {
-    // cout << "Begin uppassInnerNodeCalculate\n";
-    INT_TYPE
-    allOne = SET_ALL_BITS_ONE;
-    switch (states) {
-    default: {
-        /**
-         * u:    downpass state of current node
-         * p:    uppass state of parent node
-         * v_1:  downpass state of children 1 of u
-         * v_2:  downpass state of children 2 of u
-         */
-        // assert(states <= 32);
-
-        INT_TYPE x = SET_ALL_BITS_ZERO, y = SET_ALL_BITS_ZERO, u_k[32], p_k[32],
-                 v_1k[32], v_2k[32], u_up;
-        // parsimonyNumber x = 0, y = 0;
-        int posU, posV1, posV2, posUUp, posPUp;
-        posU = posV1 = posV2 = posPUp = 0;
-        for (int k = 0; k < states; ++k) {
-            u_k[k] = VECTOR_LOAD((CAST)(&uVec[posU]));
-            p_k[k] = VECTOR_LOAD((CAST)(&pUpVec[posPUp]));
-            v_1k[k] = VECTOR_LOAD((CAST)(&v1Vec[posV1]));
-            v_2k[k] = VECTOR_LOAD((CAST)(&v2Vec[posV2]));
-            x = VECTOR_BIT_OR(
-                x, VECTOR_AND_NOT(VECTOR_BIT_AND(u_k[k], p_k[k]), p_k[k]));
-            y = VECTOR_BIT_OR(y, VECTOR_BIT_AND(v_1k[k], v_2k[k]));
-            // x |= (~(uVec[posU] & pUpVec[posPUp]) & pUpVec[posPUp]);
-            // y |= (v1Vec[posV1] & v2Vec[posV2]);
-            posU += stepU;
-            posV1 += stepV1;
-            posV2 += stepV2;
-            posPUp += stepPUp;
-        }
-        posU = posV1 = posV2 = posUUp = posPUp = 0;
-        // posUUp = 0;
-        for (int k = 0; k < states; ++k) {
-            u_up = u_k[k];
-
-            u_up = VECTOR_BIT_XOR(u_up,
-                                  VECTOR_BIT_AND(VECTOR_BIT_XOR(u_up, p_k[k]),
-                                                 VECTOR_AND_NOT(x, allOne)));
-            u_up = VECTOR_BIT_XOR(
-                u_up, VECTOR_BIT_AND(
-                          VECTOR_BIT_XOR(u_up, VECTOR_BIT_OR(u_up, p_k[k])),
-                          VECTOR_BIT_AND(x, VECTOR_AND_NOT(y, allOne))));
-            u_up = VECTOR_BIT_XOR(
-                u_up,
-                VECTOR_BIT_AND(
-                    VECTOR_BIT_XOR(
-                        u_up, VECTOR_BIT_OR(
-                                  u_up, VECTOR_BIT_AND(
-                                            p_k[k],
-                                            VECTOR_BIT_OR(v_1k[k], v_2k[k])))),
-                    VECTOR_BIT_AND(x, y)));
-            VECTOR_STORE((CAST)(&uUpVec[posUUp]), u_up);
-            // uUpVec[posUUp] = uVec[posU];
-            // uUpVec[posUUp] ^= ((uUpVec[posUUp] ^ pUpVec[posPUp]) & (~x));
-            // uUpVec[posUUp] ^=
-            //     ((uUpVec[posUUp] ^ (uUpVec[posUUp] | pUpVec[posPUp])) &
-            //      (x & (~y)));
-            // uUpVec[posUUp] ^=
-            //     ((uUpVec[posUUp] ^
-            //       (uUpVec[posUUp] |
-            //        (pUpVec[posPUp] & (v1Vec[posV1] | v2Vec[posV2])))) &
-            //      (x & y));
-            posU += stepU;
-            posV1 += stepV1;
-            posV2 += stepV2;
-            posUUp += stepUUp;
-            posPUp += stepPUp;
-        }
-    }
-    }
-    // cout << "End uppassInnerNodeCalculate\n";
-}
-/**
- * STEP 2b
- * Update new uppass calculated to parsVectUppassLocal
- */
-void dfsRecalculateUppassLocal(nodeptr u, parsimonyNumber *pUpVec, int stepPUp,
-                               pInfo *prModel, int &w, int &mxTips) {
-    // cout << "Begin dfsRecalculateUppassLocal\n";
-    if (!inRadiusRange[u->number]) {
-        return;
-    }
-    int width = prModel->parsimonyLength;
-    int states = prModel->states;
-    int posU = width * states * u->number + w;
-    if (u->number <= mxTips) {
-        uppassLeafNodeCalculate(&(prModel->parsVect[posU]),
-                                &(prModel->parsVectUppassLocal[posU]), pUpVec,
-                                width, width, stepPUp, states);
-    } else {
-        nodeptr v1 = u->next->back;
-        nodeptr v2 = u->next->next->back;
-        uppassInnerNodeCalculate(
-            &(prModel->parsVect[posU]),
-            &(prModel->parsVect[width * states * v1->number + w]),
-            &(prModel->parsVect[width * states * v2->number + w]),
-            &(prModel->parsVectUppassLocal[posU]), pUpVec, width, width, width,
-            width, stepPUp, states);
-        if ((inRadiusRange[v1->number] || inRadiusRange[v2->number]) &&
-            !equalStatesCmp(&(prModel->parsVectUppassLocal[posU]),
-                            &(prModel->parsVectUppass[posU]), width, width,
-                            states)) {
-            dfsRecalculateUppassLocal(v1, &(prModel->parsVectUppassLocal[posU]),
-                                      width, prModel, w, mxTips);
-            dfsRecalculateUppassLocal(v2, &(prModel->parsVectUppassLocal[posU]),
-                                      width, prModel, w, mxTips);
-        }
-    }
-    // cout << "End dfsRecalculateUppassLocal\n";
-}
-/**
- * STEP 2b
- * Update new uppass calculated to parsVectUppass
- */
-void dfsRecalculateUppass(nodeptr u, parsimonyNumber *pUpVec, int stepPUp,
-                          pInfo *prModel, int &w, int &mxTips) {
-    int width = prModel->parsimonyLength;
-    int states = prModel->states;
-    int posU = width * states * u->number + w;
-    if (u->number <= mxTips) {
-        uppassLeafNodeCalculate(&(prModel->parsVect[posU]),
-                                &(prModel->parsVectUppass[posU]), pUpVec, width,
-                                width, stepPUp, states);
-    } else {
-        nodeptr v1 = u->next->back;
-        nodeptr v2 = u->next->next->back;
-        uppassInnerNodeCalculate(
-            &(prModel->parsVect[posU]),
-            &(prModel->parsVect[width * states * v1->number + w]),
-            &(prModel->parsVect[width * states * v2->number + w]),
-            &(prModel->parsVectUppass[posU]), pUpVec, width, width, width,
-            width, stepPUp, states);
-        if (!equalStatesCmp(&(prModel->parsVectUppassLocal[posU]),
-                            &(prModel->parsVectUppass[posU]), width, width,
-                            states)) {
-            dfsRecalculateUppass(v1, &(prModel->parsVectUppass[posU]), width,
-                                 prModel, w, mxTips);
-            dfsRecalculateUppass(v2, &(prModel->parsVectUppass[posU]), width,
-                                 prModel, w, mxTips);
-        }
-    }
-}
 /**
  * Use incremental downpass and uppass, recalculate only nodes need to be
  * recalculated. Nm and its 2 children must be still connected. Can be both used
@@ -3937,15 +3757,20 @@ static void applyMove(pllInstance *tr, partitionList *pr) {
             (depth[r->number] < depth[r->back->number] ? r : r->back));
         applySPRTreeStructure(r, i1);
     }
-    copyGlobalToLocalUppass(pr, 2 * tr->mxtips - 1);
+    recalculate[tr->start->number] = recalculate[tr->start->back->number] =
+        true;
+    for (int i = 1; i <= tr->mxtips + tr->mxtips - 2; ++i) {
+        if (recalculate[i]) {
+            copySingleGlobalToLocalUppass(pr, i);
+        }
+    }
+    // copyGlobalToLocalUppass(pr, 2 * tr->mxtips - 1);
     int *ti = tr->ti, counter = 4;
 
     ti[1] = tr->start->number;
     ti[2] = tr->start->back->number;
     // cout << "pNumber = " << p->number << '\n';
     // cout << "qNumber = " << q->number << '\n';
-    recalculate[tr->start->number] = recalculate[tr->start->back->number] =
-        true;
     // cout << "New root: " << tr->start->number << " - "
     //      << tr->start->back->number << '\n';
     computeTraversalInfoParsimonyUppass(tr->start, ti, &counter, tr->mxtips,
@@ -3963,39 +3788,17 @@ static void applyMove(pllInstance *tr, partitionList *pr) {
             for (int j = 0; j < numPtrs; ++j, u = u->next) {
                 nodeptr v = u->back;
                 if (!recalculate[v->number]) {
-                    for (int model = 0; model < pr->numberOfPartitions;
-                         ++model) {
-                        pInfo *prModel = pr->partitionData[model];
-                        int states = pr->partitionData[model]->states,
-                            width = pr->partitionData[model]->parsimonyLength;
-                        for (int w = 0; w < width; w += INTS_PER_VECTOR) {
-                            /**
-                             * NOTE: u                 is new parent of v
-                             *       uppass[v->number] is old parent of v
-                             */
-                            if (!equalStatesCmp(
-                                    &(prModel->parsVectUppassLocal
-                                          [width * states *
-                                               uppass_par[v->number]->number +
-                                           w]),
-                                    &(prModel->parsVectUppass
-                                          [width * states * u->number + w]),
-                                    width, width, states)) {
-                                dfsRecalculateUppass(
-                                    v,
-                                    &(prModel->parsVectUppass
-                                          [width * states * u->number + w]),
-                                    width, prModel, w, tr->mxtips);
-                            }
-                        }
+                    if (!equalStatesCmpUppassFull(
+                            pr, u->number, uppass_par[v->number]->number)) {
+                        dfsRecalculateUppassFull(v, u->number, pr, tr->mxtips);
                     }
                 }
             }
         }
     }
-    /* Reset recalculate[] array to false */
+    /* Reset recalculate[] and isUppassCopied[] array to false */
     for (int i = 1; i <= tr->mxtips + tr->mxtips - 2; ++i) {
-        recalculate[i] = false;
+        recalculate[i] = isUppassCopied[i] = false;
     }
 }
 static void reorderNodesUppass(pllInstance *tr, nodeptr *np, nodeptr p,
