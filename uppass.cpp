@@ -1991,55 +1991,8 @@ unsigned int _evaluateParsimonyIterativeFastUppass(pllInstance *tr,
     uppassStatesIterativeCalculate(tr, pr);
     return sum;
 }
-
-void traversePrepareInsertBranches(partitionList *pr, nodeptr u, int maxTips,
-                                   int &count) {
-    size_t uNumber = u->number, u1Number = u->back->number;
-    for (int model = 0; model < pr->numberOfPartitions; ++model) {
-        size_t k, states = pr->partitionData[model]->states,
-                  width = pr->partitionData[model]->parsimonyLength, i;
-        switch (states) {
-        default: {
-            parsimonyNumber *uStates[32], *u1States[32], *branchStates[32];
-
-            assert(states <= 32);
-
-            for (k = 0; k < states; ++k) {
-                uStates[k] =
-                    &(pr->partitionData[model]
-                          ->parsVectUppassLocal[(width * states * uNumber) +
-                                                width * k]);
-                u1States[k] =
-                    &(pr->partitionData[model]
-                          ->parsVectUppassLocal[(width * states * u1Number) +
-                                                width * k]);
-                branchStates[k] =
-                    &(pr->partitionData[model]
-                          ->branchVectUppass[(width * states * count) +
-                                             width * k]);
-            }
-
-            for (i = 0; i < width; i += INTS_PER_VECTOR) {
-                for (int k = 0; k < states; ++k) {
-                    VECTOR_STORE(
-                        (CAST)&branchStates[k][i],
-                        VECTOR_BIT_OR(VECTOR_LOAD((CAST)(&uStates[k][i])),
-                                      VECTOR_LOAD((CAST)(&u1States[k][i]))));
-                }
-            }
-        }
-        }
-    }
-    branchNode[count] = u;
-    count++;
-    if (u->number > maxTips) {
-        traversePrepareInsertBranches(pr, u->next->back, maxTips, count);
-        traversePrepareInsertBranches(pr, u->next->next->back, maxTips, count);
-    }
-}
-
-void traversePrepareInsertBranches(partitionList *pr, nodeptr u, int maxtrav,
-                                   int dist, int maxTips, int &count) {
+void buildBranchVectUppass(partitionList *pr, int count) {
+    nodeptr u = branchNode[count];
     size_t uNumber = u->number, u1Number = u->back->number;
     for (int model = 0; model < pr->numberOfPartitions; ++model) {
         size_t k, states = pr->partitionData[model]->states,
@@ -2090,8 +2043,13 @@ void traversePrepareInsertBranches(partitionList *pr, nodeptr u, int maxtrav,
         }
         }
     }
+}
+
+void traversePrepareInsertBranches(partitionList *pr, nodeptr u, int maxtrav,
+                                   int dist, int maxTips, int &count) {
     branchNode[count] = u;
     distFromRmvBranch[count] = dist;
+    // buildBranchVectUppass(pr, count);
     count++;
     if (u->number > maxTips && maxtrav >= 1) {
         traversePrepareInsertBranches(pr, u->next->back, maxtrav - 1, dist + 1,
@@ -3580,6 +3538,9 @@ void rearrangeTBR(pllInstance *tr, partitionList *pr, nodeptr p, int mintrav,
             traversePrepareInsertBranches(pr, q2->next->next->back, maxtrav - 1,
                                           1, tr->mxtips, count);
         }
+        for (int i = fi; i < count; ++i) {
+            buildBranchVectUppass(pr, i);
+        }
         // cout << "FI = " << fi << '\n';
         // cout << "SE = " << se << '\n';
         // cout << "count = " << count << '\n';
@@ -3760,6 +3721,9 @@ void rearrangeSPR(pllInstance *tr, partitionList *pr, nodeptr p, int mintrav,
                                           tr->mxtips, count);
             traversePrepareInsertBranches(pr, q2->next->next->back, maxtrav - 1,
                                           1, tr->mxtips, count);
+        }
+        for (int i = fi + pIsLeaf; i < count; ++i) {
+            buildBranchVectUppass(pr, i);
         }
         // cout << "FI = " << fi << '\n';
         // cout << "SE = " << se << '\n';
