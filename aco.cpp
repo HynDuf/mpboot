@@ -97,12 +97,14 @@ void ACOAlgo::updateNewPheromone(int oldScore, int newScore) {
     }
     if (newScore < curBestScore) {
         // cout << "P0\n";
+        curBestScore = newScore;
         for (int i = 0; i < edges.size(); ++i) {
             isOnPath[i] = false;
         }
         for (int E : edgesOnPath) {
             isOnPath[E] = true;
-            edges[E].updateNewPhero(true, EVAPORATION_RATE);
+            edges[E].updateNewPhero(true, EVAPORATION_RATE,
+                                    curBestScore / newScore);
         }
         for (int i = 0; i < edges.size(); ++i) {
             if (!isOnPath[i]) {
@@ -112,13 +114,13 @@ void ACOAlgo::updateNewPheromone(int oldScore, int newScore) {
         }
         savedPath.clear();
         curIter = 0;
-        curBestScore = newScore;
         foundBetterScore = true;
     } else if (foundBetterScore && newScore == curBestScore) {
         // cout << "P1\n";
         for (int E : edgesOnPath) {
             isOnPath[E] = true;
-            edges[E].updateNewPhero(true, EVAPORATION_RATE);
+            edges[E].updateNewPhero(true, EVAPORATION_RATE,
+                                    curBestScore / newScore);
         }
         // } else if (oldScore - newScore >= newScore - curBestScore) {
         //     cout << "P2\n";
@@ -127,7 +129,7 @@ void ACOAlgo::updateNewPheromone(int oldScore, int newScore) {
         //     }
     } else {
         // cout << "P3\n";
-        savedPath.push_back({numCounters, edgesOnPath});
+        savedPath.push_back({newScore, {numCounters, edgesOnPath}});
     }
     curNode = ROOT;
     curIter++;
@@ -140,9 +142,9 @@ void ACOAlgo::updateNewPheromone(int oldScore, int newScore) {
 void ACOAlgo::applyNewPheromone() {
     // Get the paths that is fastest
     sort(savedPath.begin(), savedPath.end(),
-         [&](const pair<long long, vector<int>> &A,
-             const pair<long long, vector<int>> &B) {
-             return A.first < B.first;
+         [&](const pair<int, pair<long long, vector<int>>> &A,
+             const pair<int, pair<long long, vector<int>>> &B) {
+             return A.second.first < B.second.first;
          });
     // If there are less than half of UPDATE_ITER paths that have diffMP > 0,
     // Update using savedPath until there are half of paths updated
@@ -152,14 +154,15 @@ void ACOAlgo::applyNewPheromone() {
                  UPDATE_ITER / 2 - (UPDATE_ITER - (int)savedPath.size()));
          ++i) {
         if (foundBetterScore) {
-            for (int E : savedPath[i].second) {
+            for (int E : savedPath[i].second.second) {
                 isOnPath[E] = true;
                 // edges[E].updateNewPhero(true, EVAPORATION_RATE);
             }
         } else {
-            for (int E : savedPath[i].second) {
+            for (int E : savedPath[i].second.second) {
                 isOnPath[E] = true;
-                edges[E].updateNewPhero(true, EVAPORATION_RATE);
+                edges[E].updateNewPhero(true, EVAPORATION_RATE,
+                                        curBestScore / savedPath[i].first);
             }
         }
     }

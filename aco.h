@@ -70,7 +70,7 @@ class ACOAlgo {
     vector<int> par;
     vector<ACONode> nodes;
     vector<ACOEdge> edges;
-    vector<pair<long long, vector<int>>> savedPath;
+    vector<pair<int, pair<long long, vector<int>>>> savedPath;
     vector<bool> isOnPath;
     ACOAlgo();
     void setUpParamsAndGraph(Params *params);
@@ -84,7 +84,9 @@ class ACOAlgo {
     void reportUsage();
     void incCounter();
 
-    void initBestScore(int bestScore) { cout << bestScore << '\n';  curBestScore = bestScore; }
+    void initBestScore(int bestScore) {
+        curBestScore = bestScore;
+    }
     NodeTag getNodeTag(int u) { return nodes[u].tag; }
     NodeTag getNodeTag() { return nodes[curNode].tag; }
     string nodeTagToString(NodeTag tag) {
