@@ -601,6 +601,7 @@ void parseArg(int argc, char *argv[], Params &params) {
     params.aco_nni_prior = 0.3;
     params.aco_spr_prior = 0.4;
     params.aco_tbr_prior = 0.4;
+    params.aco_heuristic_perturb = false;
     params.dna5 = false;
     params.spr_test = false;
     params.spr_tbr = false;
@@ -974,6 +975,10 @@ void parseArg(int argc, char *argv[], Params &params) {
                     throw "Use -aco_tbr_prior <double>";
                 }
                 params.aco_tbr_prior = convert_double(argv[cnt]);
+                continue;
+            }
+            if (strcmp(argv[cnt], "-aco_heuristic_perturb") == 0) {
+                params.aco_heuristic_perturb = true;
                 continue;
             }
             if (strcmp(argv[cnt], "-spr_tbr") == 0) {

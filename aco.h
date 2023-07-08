@@ -64,6 +64,13 @@ class ACOAlgo {
     int curNode;
     int curIter;
     int curBestScore;
+    int cntHeuristicPerturb = 0;
+    int scoreRATCHET;
+    int scoreIQP;
+    int scoreRANDOM_NNI;
+    long long timeRATCHET;
+    long long timeIQP;
+    long long timeRANDOM_NNI;
     bool foundBetterScore = false;
     long long lastCounter;
     long long curCounter;

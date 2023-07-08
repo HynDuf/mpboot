@@ -4,6 +4,12 @@ void ACOAlgo::setUpParamsAndGraph(Params *params) {
     // UPDATE_ITER = params->aco_update_iter;
     UPDATE_ITER =
         params->aco_update_iter + (int)params->unsuccess_iteration * 2 / 100;
+    if (params->aco_heuristic_perturb) {
+        cntHeuristicPerturb = (int)params->unsuccess_iteration * 20 / 100;
+        cntHeuristicPerturb = (cntHeuristicPerturb + 2) / 3 * 3;
+        scoreRATCHET = scoreIQP = scoreRANDOM_NNI = 0;
+        timeRATCHET = timeIQP = timeRANDOM_NNI = 0;
+    }
     EVAPORATION_RATE = params->aco_evaporation_rate;
     double RATCHET_PRIOR = params->aco_ratchet_prior;
     double IQP_PRIOR = params->aco_iqp_prior;
@@ -29,9 +35,12 @@ void ACOAlgo::setUpParamsAndGraph(Params *params) {
     addNode(SPR);
     addNode(TBR);
 
-    addEdge(ROOT, RATCHET, RATCHET_PRIOR);
-    addEdge(ROOT, IQP, IQP_PRIOR);
-    addEdge(ROOT, RANDOM_NNI, RANDOM_NNI_PRIOR);
+   
+    if (cntHeuristicPerturb == 0) {
+        addEdge(ROOT, RATCHET, RATCHET_PRIOR);
+        addEdge(ROOT, IQP, IQP_PRIOR);
+        addEdge(ROOT, RANDOM_NNI, RANDOM_NNI_PRIOR);
+    }
 
     for (int i = 1; i <= 3; ++i) {
         addEdge(i, NNI, NNI_PRIOR);
@@ -61,6 +70,19 @@ void ACOAlgo::registerCounter() { lastCounter = curCounter; }
 long long ACOAlgo::getNumCounters() { return curCounter - lastCounter; }
 
 int ACOAlgo::moveNextNode() {
+    if (cntHeuristicPerturb) {
+        if (curNode != ROOT) {
+            return TBR;
+        }
+        int tmp = cntHeuristicPerturb % 3;
+        if (tmp == 0) {
+            return curNode = RATCHET;
+        }
+        if (tmp == 1) {
+            return curNode = IQP;
+        }
+        return curNode = RANDOM_NNI;
+    }
     double sum = 0;
     int u = curNode;
     for (int i = 0; i < nodes[u].adj.size(); ++i) {
@@ -88,6 +110,51 @@ int ACOAlgo::moveNextNode() {
 void ACOAlgo::updateNewPheromone(int oldScore, int newScore) {
     // numCounters measures how long the chosen hill-climbing procedure ran
     long long numCounters = getNumCounters();
+    if (cntHeuristicPerturb) {
+        --cntHeuristicPerturb;
+        if (curNode == RATCHET) {
+            scoreRATCHET += newScore;
+            timeRATCHET  += numCounters; 
+            // cout << "scoreRATCHET = " << newScore << '\n'; 
+        }
+        if (curNode == IQP) {
+            scoreIQP += newScore;
+            timeIQP  += numCounters; 
+            // cout << "scoreIQP = " << newScore << '\n'; 
+        }
+        if (curNode == RANDOM_NNI) {
+            scoreRANDOM_NNI += newScore;
+            timeRANDOM_NNI  += numCounters; 
+            // cout << "scoreRANDOM_NNI = " << newScore << '\n'; 
+        }
+        ++nodes[curNode].cnt;
+        ++nodes[TBR].cnt;
+        if (cntHeuristicPerturb == 0) {
+            assert(nodes[RATCHET].cnt == nodes[IQP].cnt && nodes[IQP].cnt == nodes[RANDOM_NNI].cnt);
+
+            cout << "scoreRATCHET = " << scoreRATCHET << '\n'; 
+            cout << "scoreIQP = " << scoreIQP << '\n';
+            cout << "scoreRANDOM_NNI = " << scoreRANDOM_NNI << '\n';
+            
+            cout << "timeRATCHET = " << timeRATCHET << '\n'; 
+            cout << "timeIQP = " << timeIQP << '\n';
+            cout << "timeRANDOM_NNI = " << timeRANDOM_NNI << '\n';
+
+            long long sumScore = scoreRATCHET + scoreIQP + scoreRANDOM_NNI;
+            long long sumTime = timeRATCHET + timeIQP + timeRANDOM_NNI;
+            double RATCHET_PRIOR = 1.0 * (sumScore - scoreRATCHET) / sumScore * (sumTime - timeRATCHET) / sumTime;
+            double IQP_PRIOR = 1.0 * (sumScore - scoreIQP) / sumScore * (sumTime - timeIQP) / sumTime;
+            double RANDOM_NNI_PRIOR = 1.0 * (sumScore - scoreRANDOM_NNI) / sumScore * (sumTime - timeRANDOM_NNI) / sumTime;        
+            cout << "RATCHET_PRIOR * 100 = " << RATCHET_PRIOR * 100 << '\n';
+            cout << "IQP_PRIOR * 100 = " << IQP_PRIOR * 100 << '\n';
+            cout << "RANDOM_NNI_PRIOR * 100 = " << RANDOM_NNI_PRIOR * 100 << '\n';
+            cout << '\n';
+            addEdge(ROOT, RATCHET, RATCHET_PRIOR);
+            addEdge(ROOT, IQP, IQP_PRIOR);
+            addEdge(ROOT, RANDOM_NNI, RANDOM_NNI_PRIOR);
+        }
+        return;
+    }
     vector<int> edgesOnPath;
     int u = curNode;
     while (u) {
