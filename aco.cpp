@@ -114,7 +114,7 @@ void ACOAlgo::updateNewPheromone(int oldScore, int newScore) {
         curIter = 0;
         curBestScore = newScore;
         foundBetterScore = true;
-    } else if (foundBetterScore && newScore == curBestScore) {
+    } else if (newScore == curBestScore) {
         // cout << "P1\n";
         for (int E : edgesOnPath) {
             isOnPath[E] = true;
@@ -151,16 +151,10 @@ void ACOAlgo::applyNewPheromone() {
          i < min((int)savedPath.size(),
                  UPDATE_ITER / 2 - (UPDATE_ITER - (int)savedPath.size()));
          ++i) {
-        if (foundBetterScore) {
-            for (int E : savedPath[i].second) {
-                isOnPath[E] = true;
-                // edges[E].updateNewPhero(true, EVAPORATION_RATE);
-            }
-        } else {
-            for (int E : savedPath[i].second) {
-                isOnPath[E] = true;
-                edges[E].updateNewPhero(true, EVAPORATION_RATE);
-            }
+
+        for (int E : savedPath[i].second) {
+            isOnPath[E] = true;
+            edges[E].updateNewPhero(true, EVAPORATION_RATE);
         }
     }
     savedPath.clear();
