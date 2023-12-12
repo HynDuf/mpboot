@@ -593,8 +593,8 @@ void parseArg(int argc, char *argv[], Params &params) {
     int cnt;
     verbose_mode = VB_MIN;
     params.aco = false;
-    params.aco_update_iter = 15;
-    params.aco_evaporation_rate = 0.6;
+    params.aco_update_iter = 5;
+    params.aco_evaporation_rate = 0.1;
     params.aco_ratchet_prior = 0.33;
     params.aco_iqp_prior = 0.3;
     params.aco_random_nni_prior = 0.33;

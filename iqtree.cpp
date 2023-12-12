@@ -2019,7 +2019,11 @@ double IQTree::doTreeSearch() {
             int nni_count = 0;
             int nni_steps = 0;
             on_ratchet_hclimb2 = true;
-            imd_tree = doNNISearch(nni_count, nni_steps);
+            if (params->aco == true) {
+                imd_tree = doAntColonySearch(nni_count, nni_steps);
+            } else {
+                imd_tree = doNNISearch(nni_count, nni_steps);
+            }
             // update current score
             initializeAllPartialLh();
             clearAllPartialLH();

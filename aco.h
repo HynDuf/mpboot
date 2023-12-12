@@ -61,6 +61,7 @@ class ACOAlgo {
     int curNode;
     int curIter;
     int curBestScore;
+    int bestEdge;
     float curBestRatio;
     bool foundBetterScore = false;
     long long lastCounter;
@@ -69,7 +70,7 @@ class ACOAlgo {
     vector<ACONode> nodes;
     vector<ACOEdge> edges;
     vector<pair<long long, vector<int>>> savedPath;
-    vector<bool> isOnPath;
+    vector<int> isOnPath;
     ACOAlgo();
     void setUpParamsAndGraph(Params *params);
     int moveNextNode();

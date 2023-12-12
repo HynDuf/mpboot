@@ -5,7 +5,7 @@ ACOAlgo::ACOAlgo() {}
 void ACOAlgo::setUpParamsAndGraph(Params *params) {
     // UPDATE_ITER = params->aco_update_iter;
     UPDATE_ITER =
-        params->aco_update_iter + (int)params->unsuccess_iteration * 2 / 100;
+        params->aco_update_iter + (int)params->unsuccess_iteration / 100;
     EVAPORATION_RATE = params->aco_evaporation_rate;
     double NNI_PRIOR = params->aco_nni_prior;
     double SPR_PRIOR = params->aco_spr_prior;
@@ -31,8 +31,9 @@ void ACOAlgo::setUpParamsAndGraph(Params *params) {
     curCounter = 0;
     foundBetterScore = false;
     curBestRatio = 0;
+    bestEdge = -1;
 
-    isOnPath.assign(edges.size(), false);
+    isOnPath.assign(edges.size(), 0);
 }
 void ACOAlgo::addNode(NodeTag tag) {
     nodes.push_back(ACONode(tag));
@@ -84,16 +85,24 @@ void ACOAlgo::updateNewPheromone(int oldScore, int newScore) {
         edgesOnPath.push_back(E);
         u = edges[E].fromNode;
     }
-    if (newScore <= curBestScore) {
+    if (newScore < curBestScore) {
+        foundBetterScore = true;
+        aco->reportUsage();
+    }
+    if (newScore < curBestScore || (foundBetterScore && newScore == curBestScore)) {
         for (auto E: edgesOnPath) {
-            isOnPath[E] = true;
+            isOnPath[E]++;
         }
         curBestScore = newScore;
-    } else if ((oldScore - newScore) / (float)numCounters >= curBestRatio) {
-        curBestRatio = (oldScore - newScore) / (float)numCounters;
-        for (auto E: edgesOnPath) {
-            isOnPath[E] = true;
+        bestEdge = -2;
+    } else if ((oldScore - newScore + 1) / (float)numCounters > curBestRatio) {
+        curBestRatio = (oldScore - newScore + 1) / (float)numCounters;
+        if (bestEdge != -2) {
+            bestEdge = edgesOnPath[0];
         }
+        // for (auto E: edgesOnPath) {
+        //     isOnPath[E]++;
+        // }
     }
     curNode = ROOT;
     curIter++;
@@ -104,11 +113,22 @@ void ACOAlgo::updateNewPheromone(int oldScore, int newScore) {
 }
 
 void ACOAlgo::applyNewPheromone() {
+    if (bestEdge >= 0) {
+        isOnPath[bestEdge]++;
+    }
     for (int i = 0; i < edges.size(); ++i) {
-        edges[i].updateNewPhero(isOnPath[i], EVAPORATION_RATE);
-        isOnPath[i] = false;
+        // if (isOnPath[i] == 0) {
+        //     edges[i].updateNewPhero(false, EVAPORATION_RATE);
+        // } else {
+        //     for (int j = 1; j <= isOnPath[i]; ++j) {
+        //         edges[i].updateNewPhero(true, EVAPORATION_RATE);
+        //     }
+        // }
+        edges[i].updateNewPhero(isOnPath[i] > 0, EVAPORATION_RATE);
+        isOnPath[i] = 0;
     }
     curBestRatio = 0;
+    bestEdge = -1;
     reportPheroPercentage();
 }
 
