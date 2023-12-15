@@ -60,6 +60,7 @@ class ACOAlgo {
     static constexpr double PHERO_MIN = 0.1;
     int curNode;
     int curIter;
+    int reportCountIter;
     int curBestScore;
     int bestEdge;
     float curBestRatio;

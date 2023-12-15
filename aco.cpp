@@ -32,6 +32,7 @@ void ACOAlgo::setUpParamsAndGraph(Params *params) {
     foundBetterScore = false;
     curBestRatio = 0;
     bestEdge = -1;
+    reportCountIter = 10;
 
     isOnPath.assign(edges.size(), 0);
 }
@@ -87,7 +88,6 @@ void ACOAlgo::updateNewPheromone(int oldScore, int newScore) {
     }
     if (newScore < curBestScore) {
         foundBetterScore = true;
-        aco->reportUsage();
     }
     if (newScore < curBestScore || (foundBetterScore && newScore == curBestScore)) {
         for (auto E: edgesOnPath) {
@@ -109,6 +109,10 @@ void ACOAlgo::updateNewPheromone(int oldScore, int newScore) {
     if (curIter == UPDATE_ITER) {
         applyNewPheromone();
         curIter = 0;
+    }
+    if (--reportCountIter <= 0) {
+        reportCountIter = 10;
+        aco->reportUsage();
     }
 }
 
