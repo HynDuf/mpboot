@@ -17,6 +17,8 @@ void ACOAlgo::setUpParamsAndGraph(Params *params) {
     cout << "SPR_PRIOR = " << SPR_PRIOR << '\n';
     cout << "TBR_PRIOR = " << TBR_PRIOR << '\n';
 
+    IS_ACO_ONCE = params->aco_once;
+
     addNode(ROOT);
     addNode(NNI);
     addNode(SPR);
@@ -121,14 +123,17 @@ void ACOAlgo::applyNewPheromone() {
         isOnPath[bestEdge]++;
     }
     for (int i = 0; i < edges.size(); ++i) {
-        // if (isOnPath[i] == 0) {
-        //     edges[i].updateNewPhero(false, EVAPORATION_RATE);
-        // } else {
-        //     for (int j = 1; j <= isOnPath[i]; ++j) {
-        //         edges[i].updateNewPhero(true, EVAPORATION_RATE);
-        //     }
-        // }
-        edges[i].updateNewPhero(isOnPath[i] > 0, EVAPORATION_RATE);
+        if (IS_ACO_ONCE) {
+            edges[i].updateNewPhero(isOnPath[i] > 0, EVAPORATION_RATE);
+        } else {
+            if (isOnPath[i] == 0) {
+                edges[i].updateNewPhero(false, EVAPORATION_RATE);
+            } else {
+                for (int j = 1; j <= isOnPath[i]; ++j) {
+                    edges[i].updateNewPhero(true, EVAPORATION_RATE);
+                }
+            }
+        }
         isOnPath[i] = 0;
     }
     curBestRatio = 0;

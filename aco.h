@@ -58,6 +58,7 @@ class ACOAlgo {
     double EVAPORATION_RATE;
     static constexpr double PHERO_MAX = 1;
     static constexpr double PHERO_MIN = 0.1;
+    bool IS_ACO_ONCE;
     int curNode;
     int curIter;
     int reportCountIter;

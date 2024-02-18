@@ -436,6 +436,7 @@ struct Params {
     double aco_nni_prior;
     double aco_spr_prior;
     double aco_tbr_prior;
+    bool aco_once;
 
     /**
      *  Whether to consider '-' in DNA data as the 5-th distinct character

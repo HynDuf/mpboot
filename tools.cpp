@@ -601,6 +601,7 @@ void parseArg(int argc, char *argv[], Params &params) {
     params.aco_nni_prior = 0.3;
     params.aco_spr_prior = 0.4;
     params.aco_tbr_prior = 0.4;
+    params.aco_once = false;
     params.dna5 = false;
     params.spr_test = false;
     params.spr_tbr = false;
@@ -909,6 +910,7 @@ void parseArg(int argc, char *argv[], Params &params) {
         try {
             if (strcmp(argv[cnt], "-aco") == 0) {
                 params.aco = true;
+                params.stop_condition = SC_ACO_UNSUCCESS_ITERATION;
                 continue;
             }
             if (strcmp(argv[cnt], "-aco_update_iter") == 0) {
@@ -975,8 +977,8 @@ void parseArg(int argc, char *argv[], Params &params) {
                 params.aco_tbr_prior = convert_double(argv[cnt]);
                 continue;
             }
-            if (strcmp(argv[cnt], "-aco_stop_cond") == 0) {
-                params.stop_condition = SC_ACO_UNSUCCESS_ITERATION;
+            if (strcmp(argv[cnt], "-aco_once") == 0) {
+                params.aco_once = true;
                 continue;
             }
             if (strcmp(argv[cnt], "-spr_tbr") == 0) {
