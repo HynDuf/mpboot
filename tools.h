@@ -1524,6 +1524,17 @@ struct Params {
     int spr_mintrav;
     int spr_maxtrav;
 
+    /**
+     *  HynDuf: Optimize the parsimony tree using TBR implemented in PLL
+     */
+    bool tbr_pars;
+
+    /**
+     *  HynDuf: TBR's radius as required by PLL
+     */
+    int tbr_mintrav;
+    int tbr_maxtrav;
+
     /*
      * Diep: option for comparing PLL site parsimony and IQTree
      */

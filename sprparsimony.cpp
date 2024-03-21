@@ -550,7 +550,6 @@ void newviewSankoffParsimonyIterativeFastSIMD(pllInstance *tr, partitionList * p
     }
 }
 
-
 static void newviewParsimonyIterativeFast(pllInstance *tr, partitionList *pr, int perSiteScores)
 {
 	if(pllCostMatrix) {
@@ -1881,11 +1880,6 @@ static unsigned int evaluateParsimonyIterativeFast(pllInstance *tr, partitionLis
 
 #endif
 
-
-
-
-
-
 static unsigned int evaluateParsimony(pllInstance *tr, partitionList *pr, nodeptr p, pllBoolean full, int perSiteScores)
 {
 	volatile unsigned int result;
@@ -2636,7 +2630,7 @@ static void determineUninformativeSites(pllInstance *tr, partitionList *pr, int 
 template<class Numeric, const int VECSIZE>
 static void compressSankoffDNA(pllInstance *tr, partitionList *pr, int *informative, int perSiteScores)
 {
-//	cout << "Begin compressSankoffDNA()" << endl;
+// cout << "Begin compressSankoffDNA()" << endl;
   size_t
     totalNodes,
     i,
