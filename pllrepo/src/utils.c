@@ -1196,7 +1196,8 @@ static partitionList * createPartitions (pllQueue * parts, int * bounds)
      pl->partitionData[i]->upper = bounds[(i << 1) + 1];
      pl->partitionData[i]->width = bounds[(i << 1) + 1] - bounds[i << 1];
      pl->partitionData[i]->partitionWeight = 1.0 * (double) pl->partitionData[i]->width;
-
+     pl->partitionData[i]->pllRepsSegments = 0;
+     pl->partitionData[i]->pllSegmentUpper = NULL;
      //the two flags below are required to allow users to set 
      //alpha parameters and substitution rates in the Q matrix 
      //to fixed values. These parameters will then not be optimized 

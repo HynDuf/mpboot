@@ -1,6 +1,6 @@
 /**
  * tbrparsimony.cpp
- * NOTE: Use functions the same as in sprparsimony.cpp, so I have to declare it
+ * NOTE: HynDuf: Use functions the same as in sprparsimony.cpp, so I have to declare it
  * static (globally can't have functions or variables with the same name)
  */
 #include <algorithm>
@@ -141,9 +141,6 @@ static parsimonyNumber highest_cost;
 
 // //(if needed) split the parsimony vector into several segments to avoid
 // overflow when calc rell based on vec8us
-extern int pllRepsSegments;  // # of segments
-extern int *pllSegmentUpper; // array of first index of the next segment, see
-                             // IQTree::segment_upper
 static node **tbr_par = NULL;
 static bool *recalculate = NULL;
 static parsimonyNumber
@@ -161,8 +158,6 @@ void _resetGlobalParamOnNewAln() {
     vectorCostMatrix = NULL;
     highest_cost = 0;
 
-    pllRepsSegments = -1;
-    pllSegmentUpper = NULL;
     pllRemainderLowerBounds = NULL;
     first_call = true;
     doing_stepwise_addition = false;
@@ -174,10 +169,6 @@ void initializeCostMatrixTBR() {
                      pllCostMatrix + pllCostNstates * pllCostNstates) +
         1;
 
-    //    cout << "Segments: ";
-    //    for (int i = 0; i < pllRepsSegments; i++)
-    //        cout <<  " " << pllSegmentUpper[i];
-    //    cout << endl;
 
 #if (defined(__SSE3) || defined(__AVX))
     assert(pllCostMatrix);
@@ -981,7 +972,61 @@ parsimonyNumber _evaluateSankoffParsimonyIterativeFastSIMD(pllInstance *tr,
             (Numeric *)pr->partitionData[model]->informativePtnWgt;
         Numeric *ptnScore =
             (Numeric *)pr->partitionData[model]->informativePtnScore;
+        int pllRepsSegments = pr->partitionData[model]->pllRepsSegments;
+        int *pllSegmentUpper = pr->partitionData[model]->pllSegmentUpper;
 
+        // for (i = 0; i < patterns; i += VectorClass::size()) {
+        //     VectorClass sum(0);
+        //     size_t i_states = i * states;
+        //     VectorClass *leftPtn = (VectorClass *)&left[i_states];
+        //     VectorClass *rightPtn = (VectorClass *)&right[i_states];
+        //     VectorClass best_score = USHRT_MAX;
+        //     Numeric *costRow = (Numeric *)vectorCostMatrix;
+        //
+        //     for (x = 0; x < states; x++) {
+        //         VectorClass this_best_score = costRow[0] + rightPtn[0];
+        //         for (y = 1; y < states; y++) {
+        //             VectorClass value = costRow[y] + rightPtn[y];
+        //             this_best_score = min(this_best_score, value);
+        //         }
+        //         this_best_score += leftPtn[x];
+        //         best_score = min(best_score, this_best_score);
+        //         costRow += states;
+        //     }
+        //
+        //     // add weight here because weighted computation is based on pattern
+        //     // sum += best_scorde * (size_t)tr->aliaswgt[i]; // wrong (because
+        //     // aliaswgt is for all patterns, not just informative pattern)
+        //     if (perSiteScores) {
+        //         best_score.store_a(&ptnScore[i]);
+        //     } else {
+        //         // TODO without having to store per site score AND finished a
+        //         // block of patterns then use the lower-bound to stop early if
+        //         // current_score + lower_bound_remaining > best_score then
+        //         //     return current_score + lower_bound_remaining
+        //     }
+        //
+        //     if (BY_PATTERN) {
+        //         sum += best_score * VectorClass().load_a(&ptnWgt[i]);
+        //     } else
+        //         sum += best_score;
+        //
+        //     // if(sum >= bestScore)
+        //     // 		return sum;
+        //     total_sum += horizontal_add(sum);
+        //
+        //     // Diep: IMPORTANT! since the pllRemainderLowerBounds is computed
+        //     // for full ntaxa the following must be disabled during stepwise
+        //     // addition
+        //     if ((!doing_stepwise_addition) && (!perSiteScores) &&
+        //         (seg < pllRepsSegments - 1)) {
+        //         parsimonyNumber est_score =
+        //             total_sum + pllRemainderLowerBounds[seg];
+        //         if (est_score > tr->bestParsimony) {
+        //             return est_score;
+        //         }
+        //     }
+        // }
         for (seg = 0; seg < pllRepsSegments; seg++) {
             VectorClass sum(0);
             size_t lower = (seg == 0) ? 0 : pllSegmentUpper[seg - 1];
@@ -1006,8 +1051,8 @@ parsimonyNumber _evaluateSankoffParsimonyIterativeFastSIMD(pllInstance *tr,
                 }
 
                 // add weight here because weighted computation is based on
-                // pattern sum += best_score * (size_t)tr->aliaswgt[i]; // wrong
-                // (because aliaswgt is for all patterns, not just informative
+                // pattern sum += best_score * (size_t)tr->aliaswgt[i]; 
+                // wrong (because aliaswgt is for all patterns, not just informative
                 // pattern)
                 if (perSiteScores) {
                     best_score.store_a(&ptnScore[i]);
@@ -1019,9 +1064,9 @@ parsimonyNumber _evaluateSankoffParsimonyIterativeFastSIMD(pllInstance *tr,
                     //     return current_score + lower_bound_remaining
                 }
 
-                if (BY_PATTERN)
+                if (BY_PATTERN) {
                     sum += best_score * VectorClass().load_a(&ptnWgt[i]);
-                else
+                } else
                     sum += best_score;
 
                 // if(sum >= bestScore)
@@ -1033,14 +1078,14 @@ parsimonyNumber _evaluateSankoffParsimonyIterativeFastSIMD(pllInstance *tr,
             // Diep: IMPORTANT! since the pllRemainderLowerBounds is computed
             // for full ntaxa the following must be disabled during stepwise
             // addition
-            if ((!doing_stepwise_addition) && (!perSiteScores) &&
-                (seg < pllRepsSegments - 1)) {
-                parsimonyNumber est_score =
-                    total_sum + pllRemainderLowerBounds[seg];
-                if (est_score > tr->bestParsimony) {
-                    return est_score;
-                }
-            }
+            // if ((!doing_stepwise_addition) && (!perSiteScores) &&
+            //     (seg < pllRepsSegments - 1)) {
+            //     parsimonyNumber est_score =
+            //         total_sum + pllRemainderLowerBounds[seg];
+            //     if (est_score > tr->bestParsimony) {
+            //         return est_score;
+            //     }
+            // }
         }
     }
 
@@ -2093,10 +2138,10 @@ static void compressSankoffDNA(pllInstance *tr, partitionList *pr,
         rax_posix_memalign(
             (void **)&(pr->partitionData[model]->informativePtnWgt),
             PLL_BYTE_ALIGNMENT,
-            (size_t)compressedEntriesPadded * sizeof(Numeric));
+            (size_t)(compressedEntriesPadded) * sizeof(Numeric));
 
         memset(pr->partitionData[model]->informativePtnWgt, 0,
-               (size_t)compressedEntriesPadded * sizeof(Numeric));
+               (size_t)(compressedEntriesPadded) * sizeof(Numeric));
 
         if (perSiteScores) {
             rax_posix_memalign(
@@ -2118,7 +2163,43 @@ static void compressSankoffDNA(pllInstance *tr, partitionList *pr,
         //         (size_t)compressedEntriesPadded * PLL_PCF; ++i)
         //        	 pr->partitionData[model]->perSitePartialPars[i] = 0;
         //       }
-
+        pr->partitionData[model]->pllRepsSegments = 0;
+        if (pr->partitionData[model]->pllSegmentUpper != NULL)
+            delete[] pr->partitionData[model]->pllSegmentUpper;
+        pr->partitionData[model]->pllSegmentUpper = new int[compressedEntriesPadded];
+        Numeric *ptnWgt =
+            (Numeric *)pr->partitionData[model]->informativePtnWgt;
+        size_t iIndex = 0;
+        for (size_t index = lower; index < (size_t)upper; index++) {
+            if (informative[index]) {
+                ptnWgt[iIndex] = tr->aliaswgt[index];
+                iIndex++;
+            }
+        }
+        int seg_id = 0;
+        if (globalParam->sankoff_short_int) {
+            int seg_sum = 0;
+            iIndex = 0;
+            for (size_t index = lower; index < (size_t)upper; index++) {
+                if (informative[index]) {
+                    seg_sum += tr->ras_pars_score[index] * ptnWgt[iIndex];
+                    iIndex++;
+                    if (iIndex % VECSIZE == 0 && seg_sum > USHRT_MAX / VECSIZE) {
+                        pr->partitionData[model]->pllSegmentUpper[seg_id] = iIndex;
+                        seg_id++;
+                        seg_sum = 0;
+                    }
+                }
+            }
+            if (seg_id == 0 || pr->partitionData[model]->pllSegmentUpper[seg_id - 1] < iIndex) {
+                pr->partitionData[model]->pllSegmentUpper[seg_id] = iIndex;
+                seg_id++;
+            }
+        } else {
+            pr->partitionData[model]->pllSegmentUpper[0] = iIndex;
+            seg_id = 1;
+        }
+        pr->partitionData[model]->pllRepsSegments = seg_id;
         // Diep: For each leaf
         for (i = 0; i < (size_t)tr->mxtips; i++) {
             size_t w = 0, compressedIndex = 0, compressedCounter = 0, index = 0,
@@ -2136,8 +2217,6 @@ static void compressSankoffDNA(pllInstance *tr, partitionList *pr,
                 (Numeric *)&pr->partitionData[model]
                     ->parsVect[(compressedEntriesPadded * states * (i + 1))];
 
-            Numeric *ptnWgt =
-                (Numeric *)pr->partitionData[model]->informativePtnWgt;
             // for each informative pattern
             for (index = lower; index < (size_t)upper; index++) {
 
@@ -2169,10 +2248,10 @@ static void compressSankoffDNA(pllInstance *tr, partitionList *pr,
                             tipVect[k * VECSIZE] = highest_cost;
                         //					  compressedTips[k][informativeIndex]
                         //= compressedValues[k]; // Diep
-                        //cout << "compressedValues[k]: " << compressedValues[k]
+                        // cout << "compressedValues[k]: " <<
+                        // compressedValues[k]
                         //<< endl;
                     }
-                    ptnWgt[informativeIndex] = tr->aliaswgt[index];
                     informativeIndex++;
 
                     tipVect += 1; // process to the next site
@@ -2213,34 +2292,34 @@ static void compressSankoffDNA(pllInstance *tr, partitionList *pr,
     for (i = 0; i < totalNodes; i++)
         tr->parsimonyScore[i] = 0;
 
-    if ((!perSiteScores) && pllRepsSegments > 1) {
-        // compute lower-bound if not currently extracting per site score AND
-        // having > 1 segments
-        pllRemainderLowerBounds =
-            new parsimonyNumber[pllRepsSegments -
-                                1]; // last segment does not need lower bound
-        assert(iqtree != NULL);
-        int partitionId = 0;
-        int ptn;
-        int nptn = iqtree->aln->n_informative_patterns;
-        int *min_ptn_pars = new int[nptn];
-
-        for (ptn = 0; ptn < nptn; ptn++)
-            min_ptn_pars[ptn] =
-                dynamic_cast<ParsTree *>(iqtree)->findMstScore(ptn);
-
-        Numeric *ptnWgt =
-            (Numeric *)pr->partitionData[partitionId]->informativePtnWgt;
-        for (int seg = 0; seg < pllRepsSegments - 1; seg++) {
-            pllRemainderLowerBounds[seg] = 0;
-            for (ptn = pllSegmentUpper[seg]; ptn < nptn; ptn++) {
-                pllRemainderLowerBounds[seg] += min_ptn_pars[ptn] * ptnWgt[ptn];
-            }
-        }
-
-        delete[] min_ptn_pars;
-    } else
-        pllRemainderLowerBounds = NULL;
+    // if ((!perSiteScores) && pllRepsSegments > 1) {
+    //     // compute lower-bound if not currently extracting per site score AND
+    //     // having > 1 segments
+    //     pllRemainderLowerBounds =
+    //         new parsimonyNumber[pllRepsSegments -
+    //                             1]; // last segment does not need lower bound
+    //     assert(iqtree != NULL);
+    //     int partitionId = 0;
+    //     int ptn;
+    //     int nptn = iqtree->aln->n_informative_patterns;
+    //     int *min_ptn_pars = new int[nptn];
+    //
+    //     for (ptn = 0; ptn < nptn; ptn++)
+    //         min_ptn_pars[ptn] =
+    //             dynamic_cast<ParsTree *>(iqtree)->findMstScore(ptn);
+    //
+    //     Numeric *ptnWgt =
+    //         (Numeric *)pr->partitionData[partitionId]->informativePtnWgt;
+    //     for (int seg = 0; seg < pllRepsSegments - 1; seg++) {
+    //         pllRemainderLowerBounds[seg] = 0;
+    //         for (ptn = pllSegmentUpper[seg]; ptn < nptn; ptn++) {
+    //             pllRemainderLowerBounds[seg] += min_ptn_pars[ptn] * ptnWgt[ptn];
+    //         }
+    //     }
+    //
+    //     delete[] min_ptn_pars;
+    // } else
+    //     pllRemainderLowerBounds = NULL;
 }
 
 static void compressDNA(pllInstance *tr, partitionList *pr, int *informative,
@@ -2866,6 +2945,10 @@ static int pllTestTBRMoveLeaf(pllInstance *tr, partitionList *pr,
     else if (mp == tr->bestParsimony)
         bestTreeScoreHits++;
 
+    if (perSiteScores) {
+        // If UFBoot is enabled ...
+        pllSaveCurrentTreeTBRParsimony(tr, pr, mp); // run UFBoot
+    }
     if ((mp < tr->bestParsimony) ||
         ((mp == tr->bestParsimony) &&
          (random_double() <= 1.0 / bestTreeScoreHits))) {

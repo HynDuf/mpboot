@@ -40,8 +40,6 @@ extern StringIntMap pllTreeCounter;
 unsigned int *pllCostMatrix;              // Diep: For weighted version
 int pllCostNstates;                       // Diep: For weighted version
 parsimonyNumber *vectorCostMatrix = NULL; // BQM: vectorized cost matrix
-int pllRepsSegments;
-int *pllSegmentUpper;
 
 IQTree::IQTree() : PhyloTree() { init(); }
 
@@ -631,11 +629,23 @@ void IQTree::initializePLL(Params &params) {
     else
         pllAlignmentRemoveDups(pllAlignment, pllPartitions);
 
+
     pllTreeInitTopologyForAlignment(pllInst, pllAlignment);
 
     /* Connect the alignment and partition structure with the tree structure */
     if (!pllLoadAlignment(pllInst, pllAlignment, pllPartitions)) {
         outError("Incompatible tree/alignment combination");
+    }
+
+    if (params.sankoff_cost_file) {
+        // cout << pllAlignment->sequenceLength << ' ' << aln->getNPattern() << '\n';
+        assert(pllAlignment->sequenceLength == aln->getNPattern());
+        pllInst->ras_pars_score = (int *) rax_malloc (pllAlignment->sequenceLength * sizeof(int));
+        for (int i = 0; i < pllAlignment->sequenceLength; ++i) {
+            // cout << pllAlignment->siteWeights[i] << ' ' << aln->at(i).frequency << '\n';
+            assert(pllAlignment->siteWeights[i] == aln->at(i).frequency);
+            pllInst->ras_pars_score[i] = aln->at(i).ras_pars_score;
+        }
     }
 
     globalParam = &params;
@@ -644,8 +654,6 @@ void IQTree::initializePLL(Params &params) {
     if (params.maximum_parsimony && params.sankoff_cost_file) {
         pllCostMatrix = cost_matrix;
         pllCostNstates = cost_nstates;
-        pllSegmentUpper = segment_upper;
-        pllRepsSegments = reps_segments;
         initializeCostMatrix();
         if (params.tbr_pars) {
             initializeCostMatrixTBR();
@@ -653,8 +661,6 @@ void IQTree::initializePLL(Params &params) {
     } else {
         pllCostMatrix = NULL;
         pllCostNstates = -1;
-        pllSegmentUpper = NULL;
-        pllRepsSegments = -1;
     }
 }
 
@@ -2264,21 +2270,10 @@ string IQTree::doNNISearch(int &nniCount, int &nniSteps) {
             PatternComp pcomp;
             sort(aln->begin(), aln->end(), pcomp);
             aln->updateSitePatternAfterOptimized();
+            cout << "aln->n_informative_patterns = " << aln->n_informative_patterns << '\n';
 
             initializePLL(*params); // because the set of patterns might be a
                                     // subset of the orig
-            pllNewickTree *btree =
-                pllNewickParseString(getTreeString().c_str());
-            assert(btree != NULL);
-            pllTreeInitTopologyNewick(pllInst, btree, PLL_FALSE);
-            pllNewickParseDestroy(&btree);
-
-            // update segmenting information
-            if (params->sankoff_cost_file) {
-                doSegmenting();
-                pllRepsSegments = reps_segments;
-                pllSegmentUpper = segment_upper;
-            }
         }
 
         //		if(false){
@@ -4198,6 +4193,9 @@ void IQTree::doSegmenting() {
     }
 
     if (seg_sum) {
+        /*
+         * HynDuf: This is because after sorted, all the patterns with ras_par_score = 0 will be the last elements of aln. So even we iterate to nptn, setting it to aln->n_informative_patterns is totally fine and intended here
+         */
         segment_upper[segment_no] = aln->n_informative_patterns;
         segment_no++;
     }

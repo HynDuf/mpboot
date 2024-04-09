@@ -1066,6 +1066,12 @@ typedef struct {
 
     parsimonyNumber *informativePtnScore; // Diep: informative pattern score
 
+    /*
+     * HynDuf: Sankoff only. As USHORT isn't that big, we have to partition the patterns into segments. We intend to add the score to a Vec16us sum (add multiple 16-patterns * their frequencies to the only variable sum). And then total_sum += horizontal_add(sum) later. So we need to make sure 16 elements of sum is not overflow (< USHORT_MAX).
+     */
+    int pllRepsSegments;  
+    int *pllSegmentUpper;
+    //
     /* This buffer of size width is used to store intermediate values for the
        branch length optimization under newton-raphson. The data in here can be
        re-used for all iterations irrespective of the branch length.
@@ -1203,6 +1209,7 @@ typedef struct {
     double *patratStored;
     int *rateCategory;
     int *aliaswgt; /**< weight by pattern */
+    int *ras_pars_score; /**< ras_pars_score from iqtree */
     pllBoolean manyPartitions;
 
     pllBoolean
