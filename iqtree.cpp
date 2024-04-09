@@ -2270,7 +2270,6 @@ string IQTree::doNNISearch(int &nniCount, int &nniSteps) {
             PatternComp pcomp;
             sort(aln->begin(), aln->end(), pcomp);
             aln->updateSitePatternAfterOptimized();
-            cout << "aln->n_informative_patterns = " << aln->n_informative_patterns << '\n';
 
             initializePLL(*params); // because the set of patterns might be a
                                     // subset of the orig

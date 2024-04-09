@@ -2805,6 +2805,7 @@ void optimizeAlignment(IQTree * & tree, Params & params){
 		PatternComp pcomp;
 		sort(tree->aln->begin(), tree->aln->end(), pcomp);
 		tree->aln->updateSitePatternAfterOptimized();
+        
 
 		tree->initializeAllPartialPars();
 		tree->clearAllPartialLH();
