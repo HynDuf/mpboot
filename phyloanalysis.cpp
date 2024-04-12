@@ -2813,6 +2813,9 @@ void optimizeAlignment(IQTree * & tree, Params & params){
 		if(pars_after != pars_before) outError("Reordering alignment has bug.");
 		cout << getCPUTime() - start << " seconds" << endl;
 	}
+	// for(int i = 0; i < tree->getAlnNPattern(); i++){
+	// 	cout << "(tree->aln)->at(" << i << ").ras_pars_score = " << (tree->aln)->at(i).ras_pars_score << '\n';
+	// }
 
 	tree->doSegmenting();
 

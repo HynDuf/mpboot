@@ -2612,14 +2612,7 @@ static void compressSankoffDNA(pllInstance *tr, partitionList *pr,
         for (i = lower; i < upper; i++)
             if (informative[i]) {
                 entries++; // Diep: here,entries counts # informative pattern
-            } else {
-                if (tr->ras_pars_score[i] * tr->aliaswgt[i] > 0) {
-                    cout << "tr->ras_pars_score[" << i << "] = " << tr->ras_pars_score[i] << '\n';
-                    cout << "tr->aliaswgt[" << i << "] = " << tr->aliaswgt[i] << '\n';
-                    assert(0);
-                }
-
-            }
+            } 
 
         // number of informative site patterns
         compressedEntries = entries;
@@ -2717,12 +2710,6 @@ static void compressSankoffDNA(pllInstance *tr, partitionList *pr,
             seg_id = 1;
         }
         pr->partitionData[model]->pllRepsSegments = seg_id;
-        if (iqtree->aln->n_informative_patterns > entries) {
-            cout << "entries = " << entries << '\n';
-            cout << "iqtree->aln->n_informative_patterns = " << iqtree->aln->n_informative_patterns << '\n';
-            cout << "seg_id = " << seg_id << '\n';
-            assert(0);
-        }
         // Diep: For each leaf
         for (i = 0; i < (size_t)tr->mxtips; i++) {
             size_t w = 0, compressedIndex = 0, compressedCounter = 0, index = 0,
@@ -3040,7 +3027,6 @@ void _updateInternalPllOnRatchet(pllInstance *tr, partitionList *pr) {
         for (int ptn = pr->partitionData[i]->lower;
              ptn < pr->partitionData[i]->upper; ptn++) {
             tr->aliaswgt[ptn] = iqtree->aln->at(ptn).frequency;
-            tr->ras_pars_score[ptn] = iqtree->aln->at(ptn).ras_pars_score;
         }
     }
 }
