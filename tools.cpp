@@ -556,6 +556,7 @@ void parseArg(int argc, char *argv[], Params &params) {
     params.tbr_pars = false;
     params.tbr_mintrav = 1;
     params.tbr_maxtrav = 5;
+    params.tbr_better = false;
     params.tree_gen = NONE;
     params.user_file = NULL;
     params.out_prefix = NULL;
@@ -2416,6 +2417,10 @@ void parseArg(int argc, char *argv[], Params &params) {
                 if (cnt >= argc)
                     throw "Use -tbr_maxtrav <maxtrav>";
                 params.tbr_maxtrav = convert_int(argv[cnt]);
+                continue;
+            }
+            if (strcmp(argv[cnt], "-tbr_better") == 0) {
+                params.tbr_better = true;
                 continue;
             }
 			if(strcmp(argv[cnt], "-sitepars") == 0){

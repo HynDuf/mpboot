@@ -1535,6 +1535,12 @@ struct Params {
     int tbr_mintrav;
     int tbr_maxtrav;
 
+    /**
+     *  HynDuf: Use a different TBR hill-climbing strategy (namely TBR-Better).
+     *  The Default version is TBR-best (default value of tbr_better is false).
+     */
+    bool tbr_better;
+
     /*
      * Diep: option for comparing PLL site parsimony and IQTree
      */
