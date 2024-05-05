@@ -92,8 +92,8 @@ void computeConsensusNetwork(const char *input_trees, int burnin, int max_count,
  * Diep:
  * Locate the definition here so it is seen by optimizeAlignment
  */
-//#define BootValTypePars int // Diep added
-#define BootValTypePars unsigned short // Diep added
+#define BootValTypePars int // Diep added
+// #define BootValTypePars unsigned short // Diep added
 
 
 struct PatternComp{

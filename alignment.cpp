@@ -114,7 +114,7 @@ void Alignment::updateSitePatternAfterOptimized(){
     countInformative();
 }
 
-void Alignment::modifyPatternFreq(Alignment & aln, unsigned short * new_pattern_freqs, int new_nptn){
+void Alignment::modifyPatternFreq(Alignment & aln, int * new_pattern_freqs, int new_nptn){
 	assert(new_nptn == aln.getNPattern());
 	int nsite = aln.getNSite();
     seq_names.insert(seq_names.begin(), aln.seq_names.begin(), aln.seq_names.end());

@@ -219,7 +219,7 @@ void IQTree::setParams(Params &params) {
 			// Diep: For parsimony bootstrap
 			boot_samples_pars.resize(params.gbo_replicates);
 			boot_samples_pars_remain_bounds.resize(params.gbo_replicates, NULL);
-			nunit = getAlnNPattern() + VCSIZE_USHORT;
+			nunit = getAlnNPattern() + VCSIZE_INT;
 
 //			BootValTypePars *mem = aligned_alloc<BootValTypePars>(nunit * (size_t)(params.gbo_replicates));
 //			memset(mem, 0, nunit * (size_t)(params.gbo_replicates) * sizeof(BootValTypePars));
@@ -327,7 +327,7 @@ void IQTree::setParams(Params &params) {
 		iter_best = false;
 
 		if(params.ratchet_iter >= 0){
-			size_t nunit = getAlnNPattern() + VCSIZE_USHORT;
+			size_t nunit = getAlnNPattern() + VCSIZE_INT;
 			original_sample = aligned_alloc<BootValTypePars>(nunit);
 			memset(original_sample, 0, nunit * sizeof(BootValTypePars));
 			for (size_t i = 0; i < getAlnNPattern(); i++)
@@ -3282,11 +3282,11 @@ void IQTree::saveCurrentTree(double cur_logl) {
 	// if on_ratchet_hclimb1, update cur_logl
 	if(params->maximum_parsimony && on_ratchet_hclimb1 && reps_segments != -1){
 		int ptn = 0, segment_id = 0, score = 0;
-		VectorClassUShort vc_score = 0;
+		VectorClassInt vc_score = 0;
 		// sum by segment to avoid data overflow
 		for(; segment_id < reps_segments; segment_id++){
-			for (; ptn < segment_upper[segment_id]; ptn+=VCSIZE_USHORT)
-				vc_score = VectorClassUShort().load_a(&_pattern_pars[ptn]) * VectorClassUShort().load_a(&original_sample[ptn]) + vc_score;
+			for (; ptn < segment_upper[segment_id]; ptn+=VCSIZE_INT)
+				vc_score = VectorClassInt().load_a(&_pattern_pars[ptn]) * VectorClassInt().load_a(&original_sample[ptn]) + vc_score;
 			score += horizontal_add(vc_score);
 			vc_score = 0;
 		}
@@ -3422,12 +3422,12 @@ void IQTree::saveCurrentTree(double cur_logl) {
 					rell = -(double)res;
 				}else{
 					int ptn = 0, segment_id = 0, res = 0;
-					VectorClassUShort vc_rell = 0;
+					VectorClassInt vc_rell = 0;
 					int max_nptn = nptn / 2;
 					for(; segment_id < reps_segments; segment_id++){
-						for (; ptn < segment_upper[segment_id]; ptn+=VCSIZE_USHORT){
+						for (; ptn < segment_upper[segment_id]; ptn+=VCSIZE_INT){
 							if(params->do_first_rell && ptn >= max_nptn) break;
-							vc_rell = VectorClassUShort().load_a(&_pattern_pars[ptn]) * VectorClassUShort().load_a(&boot_sample[ptn]) + vc_rell;
+							vc_rell = VectorClassInt().load_a(&_pattern_pars[ptn]) * VectorClassInt().load_a(&boot_sample[ptn]) + vc_rell;
 						}
 						res += horizontal_add(vc_rell);
 						vc_rell = 0;

@@ -519,7 +519,7 @@ void newviewSankoffParsimonyIterativeFastSIMD(pllInstance *tr, partitionList * p
 
             for(i = 0; i < patterns; i+=VectorClass::size())
             {
-                VectorClass cur_contrib = USHRT_MAX;
+                VectorClass cur_contrib = (globalParam->sankoff_short_int ? USHRT_MAX : UINT_MAX);
                 size_t i_states = i*states;
                 VectorClass *leftPtn = (VectorClass*) &left[i_states];
                 VectorClass *rightPtn = (VectorClass*) &right[i_states];
@@ -910,7 +910,7 @@ parsimonyNumber evaluateSankoffParsimonyIterativeFastSIMD(pllInstance *tr, parti
                 size_t i_states = i*states;
                 VectorClass *leftPtn = (VectorClass*) &left[i_states];
                 VectorClass *rightPtn = (VectorClass*) &right[i_states];
-                VectorClass best_score = USHRT_MAX;
+                VectorClass best_score = (globalParam->sankoff_short_int ? USHRT_MAX : UINT_MAX);
                 Numeric *costRow = (Numeric*)vectorCostMatrix;
 
                 for (x = 0; x < states; x++) {
@@ -3344,7 +3344,7 @@ void pllComputePatternParsimony(pllInstance * tr, partitionList * pr, double *pt
 }
 
 template<class Numeric>
-void pllComputeSankoffPatternParsimony(pllInstance * tr, partitionList * pr, unsigned short *ptn_pars, int *cur_pars){
+void pllComputeSankoffPatternParsimony(pllInstance * tr, partitionList * pr, int *ptn_pars, int *cur_pars){
 	int ptn = 0;
 	int sum = 0;
 
@@ -3360,7 +3360,7 @@ void pllComputeSankoffPatternParsimony(pllInstance * tr, partitionList * pr, uns
 	if(cur_pars) *cur_pars = sum;
 }
 
-void pllComputePatternParsimony(pllInstance * tr, partitionList * pr, unsigned short *ptn_pars, int *cur_pars){
+void pllComputePatternParsimony(pllInstance * tr, partitionList * pr, int *ptn_pars, int *cur_pars){
 	if(pllCostMatrix) {
         if (globalParam->sankoff_short_int)
             return pllComputeSankoffPatternParsimony<parsimonyNumberShort>(tr, pr, ptn_pars, cur_pars);
