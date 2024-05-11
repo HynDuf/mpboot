@@ -2571,36 +2571,6 @@ static void nodeRectifierPars(pllInstance *tr, bool reset = false) {
     reorderNodes(tr, tr->curRoot->back, &count, reset);
 }
 
-static void reorderNodesVer2(pllInstance *tr, nodeptr p, int *count,
-                             bool resetParent = false) {
-    tr->nodep_dfs[*count] = p;
-    *count = *count + 1;
-    if (p->number <= tr->mxtips)
-        return;
-    assert(p->xPars || resetParent);
-    if (resetParent) {
-        tbr_par[p->next->back->number] = tbr_par[p->next->next->back->number] =
-            p;
-    }
-
-    reorderNodesVer2(tr, p->next->back, count, resetParent);
-    reorderNodesVer2(tr, p->next->next->back, count, resetParent);
-}
-
-static void nodeRectifierParsVer2(pllInstance *tr, bool reset = false) {
-    int count = 1;
-    tr->start = tr->nodep[1];
-    tr->rooted = PLL_FALSE;
-    /* TODO why is tr->rooted set to PLL_FALSE here ?*/
-    if (reset) {
-        tr->curRoot = tr->nodep[1];
-        tr->curRootBack = tr->nodep[1]->back;
-    }
-    reorderNodesVer2(tr, tr->curRoot, &count, reset);
-    reorderNodesVer2(tr, tr->curRoot->back, &count, reset);
-    assert(count == tr->mxtips + tr->mxtips - 1);
-}
-
 static bool restoreTreeRearrangeParsimonyTBR(pllInstance *tr, partitionList *pr,
                                              int perSiteScores,
                                              bool removed = false) {
@@ -3166,8 +3136,7 @@ int pllOptimizeTbrParsimony(pllInstance *tr, partitionList *pr, int mintrav,
 
     assert(!tr->constrained);
 
-    // nodeRectifierPars(tr, true);
-    nodeRectifierParsVer2(tr, true);
+    nodeRectifierPars(tr, true);
     tr->bestParsimony = UINT_MAX;
     tr->bestParsimony =
         _evaluateParsimony(tr, pr, tr->start, PLL_TRUE, perSiteScores);
@@ -3179,17 +3148,16 @@ int pllOptimizeTbrParsimony(pllInstance *tr, partitionList *pr, int mintrav,
     randomMP = tr->bestParsimony;
 
     do {
-        // nodeRectifierPars(tr, false);
-        nodeRectifierParsVer2(tr, false);
+        nodeRectifierPars(tr, false);
         startMP = randomMP;
         for (int i = 1; i <= tr->mxtips + tr->mxtips - 2; i++) {
-            bool isLeaf = isTip(tr->nodep_dfs[i]->number, tr->mxtips) ||
-                          isTip(tr->nodep_dfs[i]->back->number, tr->mxtips);
+            bool isLeaf = isTip(tr->nodep[i]->number, tr->mxtips) ||
+                          isTip(tr->nodep[i]->back->number, tr->mxtips);
             tr->TBR_removeBranch = NULL;
             tr->TBR_insertBranch1 = tr->TBR_insertBranch2 = NULL;
             bestTreeScoreHits = 1;
             if (isLeaf) {
-                pllComputeTBRLeaf(tr, pr, tr->nodep_dfs[i], mintrav, maxtrav,
+                pllComputeTBRLeaf(tr, pr, tr->nodep[i], mintrav, maxtrav,
                                   perSiteScores);
                 if (tr->bestParsimony == randomMP)
                     bestIterationScoreHits++;
@@ -3204,11 +3172,11 @@ int pllOptimizeTbrParsimony(pllInstance *tr, partitionList *pr, int mintrav,
                 }
             } else {
                 if (globalParam->tbr_better == true) {
-                    pllComputeTBRBetter(tr, pr, tr->nodep_dfs[i], mintrav,
+                    pllComputeTBRBetter(tr, pr, tr->nodep[i], mintrav,
                                       maxtrav, perSiteScores);
                 } else {
                     // Default TBR-best strategy (run with out -tbr_better option)
-                    pllComputeTBR(tr, pr, tr->nodep_dfs[i], mintrav, maxtrav,
+                    pllComputeTBR(tr, pr, tr->nodep[i], mintrav, maxtrav,
                                   perSiteScores);
                 }
                 if (globalParam->tbr_better == false) {

@@ -1270,8 +1270,6 @@ typedef struct {
 
     node **nodep; /**< pointer to the list of nodes, which describe the current
                      topology */
-    node **nodep_dfs; /**< pointer to the list of nodes, which describe the
-                     current topology */
     nodeptr nodeBaseAddress;
     node *start;   /**< starting node by default for full traversals (must be a
                       tip contained in the tree we are operating on) */
