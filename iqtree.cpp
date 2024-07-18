@@ -3535,23 +3535,19 @@ void IQTree::saveCurrentTree(double cur_logl) {
         params->no_hclimb1_bb)
         return;
 
-    // if on_ratchet_hclimb1, update cur_logl
-    if (params->maximum_parsimony && on_ratchet_hclimb1 &&
-        reps_segments != -1) {
-        int ptn = 0, segment_id = 0, score = 0;
-        VectorClassUShort vc_score = 0;
-        // sum by segment to avoid data overflow
-        for (; segment_id < reps_segments; segment_id++) {
-            for (; ptn < segment_upper[segment_id]; ptn += VCSIZE_USHORT)
-                vc_score =
-                    VectorClassUShort().load_a(&_pattern_pars[ptn]) *
-                        VectorClassUShort().load_a(&original_sample[ptn]) +
-                    vc_score;
-            score += horizontal_add(vc_score);
-            vc_score = 0;
-        }
-        cur_logl = -score;
-    }
+	// if on_ratchet_hclimb1, update cur_logl
+	if(params->maximum_parsimony && on_ratchet_hclimb1 && reps_segments != -1){
+		int ptn = 0, segment_id = 0, score = 0;
+		VectorClassInt vc_score = 0;
+		// sum by segment to avoid data overflow
+		for(; segment_id < reps_segments; segment_id++){
+			for (; ptn < segment_upper[segment_id]; ptn+=VCSIZE_INT)
+				vc_score = VectorClassInt().load_a(&_pattern_pars[ptn]) * VectorClassInt().load_a(&original_sample[ptn]) + vc_score;
+			score += horizontal_add(vc_score);
+			vc_score = 0;
+		}
+		cur_logl = -score;
+	}
 
     /* -------------------------------------
      * Diep: Main old saveCurrentTree
@@ -3697,28 +3693,22 @@ void IQTree::saveCurrentTree(double cur_logl) {
             if (params->maximum_parsimony) {
                 BootValTypePars *boot_sample = boot_samples_pars[sample];
 
-                if (params->auto_vectorize) {
-                    int ptn = 0, res = 0;
-                    for (; ptn < nptn; ptn++)
-                        res += _pattern_pars[ptn] * boot_sample[ptn];
-                    rell = -(double)res;
-                } else {
-                    int ptn = 0, segment_id = 0, res = 0;
-                    VectorClassUShort vc_rell = 0;
-                    int max_nptn = nptn / 2;
-                    for (; segment_id < reps_segments; segment_id++) {
-                        for (; ptn < segment_upper[segment_id];
-                             ptn += VCSIZE_USHORT) {
-                            if (params->do_first_rell && ptn >= max_nptn)
-                                break;
-                            vc_rell = VectorClassUShort().load_a(
-                                          &_pattern_pars[ptn]) *
-                                          VectorClassUShort().load_a(
-                                              &boot_sample[ptn]) +
-                                      vc_rell;
-                        }
-                        res += horizontal_add(vc_rell);
-                        vc_rell = 0;
+				if(params->auto_vectorize){
+					int ptn = 0, res = 0;
+					for (; ptn < nptn; ptn++)
+						res += _pattern_pars[ptn] * boot_sample[ptn];
+					rell = -(double)res;
+				}else{
+					int ptn = 0, segment_id = 0, res = 0;
+					VectorClassInt vc_rell = 0;
+					int max_nptn = nptn / 2;
+					for(; segment_id < reps_segments; segment_id++){
+						for (; ptn < segment_upper[segment_id]; ptn+=VCSIZE_INT){
+							if(params->do_first_rell && ptn >= max_nptn) break;
+							vc_rell = VectorClassInt().load_a(&_pattern_pars[ptn]) * VectorClassInt().load_a(&boot_sample[ptn]) + vc_rell;
+						}
+						res += horizontal_add(vc_rell);
+						vc_rell = 0;
 
                         if ((!skipped) && (reps_segments > 1) &&
                             (segment_id > reps_segments / 4) &&

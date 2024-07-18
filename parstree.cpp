@@ -110,7 +110,7 @@ int ParsTree::computeParsimony(){
     assert(current_it_back);
 
     int nptn = aln->size();
-    if(_pattern_pars == NULL) _pattern_pars = aligned_alloc<BootValTypePars>(nptn + VCSIZE_USHORT);
+    if(_pattern_pars == NULL) _pattern_pars = aligned_alloc<BootValTypePars>(nptn + VCSIZE_INT);
 
     return computeParsimonyBranch((PhyloNeighbor*) root->neighbors[0], (PhyloNode*) root);
 }
@@ -146,7 +146,7 @@ void ParsTree::computePartialParsimony(PhyloNeighbor *dad_branch, PhyloNode *dad
 //        cout << "############# leaf!" << endl;
         // external node
         for(int i = 0; i < pars_block_size - 1; i++)
-            dad_branch->partial_pars[i] = 1000;
+            dad_branch->partial_pars[i] = UINT_MAX / 3;
         dad_branch->partial_pars[pars_block_size - 1] = 0; // reserved for corresponding subtree pars
         for (ptn = 0; ptn < aln->size(); ptn++){
             // ignore const ptn because it does not affect pars score
@@ -457,8 +457,8 @@ int ParsTree::computeParsimonyBranch(PhyloNeighbor *dad_branch, PhyloNode *dad, 
     }
 
     int nptn = aln->size();
-    if(!_pattern_pars) _pattern_pars = aligned_alloc<BootValTypePars>(nptn+VCSIZE_USHORT);
-    memset(_pattern_pars, 0, sizeof(BootValTypePars) * (nptn+VCSIZE_USHORT));
+    if(!_pattern_pars) _pattern_pars = aligned_alloc<BootValTypePars>(nptn+VCSIZE_INT);
+    memset(_pattern_pars, 0, sizeof(BootValTypePars) * (nptn+VCSIZE_INT));
 
     if ((dad_branch->partial_lh_computed & 2) == 0)
         computePartialParsimony(dad_branch, dad);
