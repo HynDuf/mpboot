@@ -207,7 +207,7 @@ typedef vector<string> StrVector;
 /**
         matrix of double number
  */
-#define matrix(T) vector<vector<T> >
+#define mmatrix(T) vector<vector<T> >
 
 /**
         matrix of double
@@ -225,7 +225,7 @@ public:
         void setZero();
 };
  */
-typedef matrix(double) DoubleMatrix;
+typedef mmatrix(double) DoubleMatrix;
 
 typedef unsigned int UINT;
 
@@ -411,6 +411,14 @@ extern int NNI_MAX_NR_STEP;
         program parameters, everything is specified here
  */
 struct Params {
+
+	/**
+	 *  Checkpoints
+	 */
+    bool print_all_checkpoints;
+    bool ignore_checkpoint;
+    /** time (in seconds) between checkpoint dump */
+    int checkpoint_dump_interval;
 
 	/**
 	 *  Number of starting parsimony trees
@@ -1782,6 +1790,8 @@ void outError(const char *error, string msg);
 void outWarning(const char *warn);
 void outWarning(string warn);
 
+/** safe version of std::getline to deal with files from different platforms */ 
+std::istream& safeGetline(std::istream& is, std::string& t);
 
 /*--------------------------------------------------------------*/
 /*--------------------------------------------------------------*/
@@ -2191,6 +2201,12 @@ void summarizeHeader(ostream &out, Params &params, bool budget_constraint, Input
  * print footer of summary file
  */
 void summarizeFooter(ostream &out, Params &params);
+
+/**
+    remove white space at the beginning and end of the string
+    @param str (IN/OUT) string to be trimmed
+*/
+void trimString(string &str);
 
 int calculateSequenceHash(string &seq); 
 
