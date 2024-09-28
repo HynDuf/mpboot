@@ -1658,6 +1658,7 @@ void printFinalSearchInfo(Params &params, IQTree &iqtree, double search_cpu_time
  *  MAIN TREE RECONSTRUCTION
  ***********************************************************/
 void runTreeReconstruction(Params &params, string &original_model, IQTree &iqtree, vector<ModelInfo> &model_info) {
+    cout << "runTreeReconstruction\n";
 
     string dist_file;
     params.startCPUTime = getCPUTime();
@@ -1742,6 +1743,7 @@ void runTreeReconstruction(Params &params, string &original_model, IQTree &iqtre
     // Update best tree
     iqtree.candidateTrees.clear(); // Diep added
     iqtree.setBestTree(initTree, iqtree.curScore);
+    iqtree.restoreCheckpoint();
     cout << "Current best tree score: " << (params.maximum_parsimony ? -iqtree.bestScore : iqtree.bestScore) << endl << endl;
     iqtree.candidateTrees.update(initTree, iqtree.curScore);
 
@@ -1761,7 +1763,15 @@ void runTreeReconstruction(Params &params, string &original_model, IQTree &iqtre
         double initTime = getCPUTime();
 
         if (!params.user_file && (params.start_tree == STT_PARSIMONY || params.start_tree == STT_PLL_PARSIMONY)) {
-        	int numDup = initCandidateTreeSet(params, iqtree, numInitTrees);
+
+            if (!iqtree.getCheckpoint()->getBool("finishedCandidateSet")) {
+                initCandidateTreeSet(params, iqtree, numInitTrees);
+                iqtree.saveCheckpoint();
+                iqtree.getCheckpoint()->putBool("finishedCandidateSet", true);
+                iqtree.getCheckpoint()->dump();
+            } else {
+                cout << "CHECKPOINT: Candidate tree set restored, best LogL: " << iqtree.bestScore << endl;
+            }
         	assert(iqtree.candidateTrees.size() != 0);
         	cout << "Finish initializing candidate tree set. ";
         	cout << "Number of distinct locally optimal trees: " << iqtree.candidateTrees.size() << endl;
@@ -2176,7 +2186,11 @@ void convertAlignment(Params &params, IQTree *iqtree) {
 /**********************************************************
  * TOP-LEVEL FUNCTION
  ***********************************************************/
-void runPhyloAnalysis(Params &params) {
+void runPhyloAnalysis(Params &params, Checkpoint *checkpoint) {
+    cout << "runPhyloAnalysis\n";
+    checkpoint->putBool("finished", false);
+    checkpoint->setDumpInterval(params.checkpoint_dump_interval);
+
 	Alignment *alignment;
 	IQTree *tree;
 
@@ -2214,6 +2228,7 @@ void runPhyloAnalysis(Params &params) {
 
 	}
 
+    tree->setCheckpoint(checkpoint);
 
 	string original_model = params.model_name;
 
@@ -2324,6 +2339,8 @@ void runPhyloAnalysis(Params &params) {
 		runStandardBootstrap(params, original_model, alignment, tree);
 	}
 
+    checkpoint->putBool("finished", true);
+    checkpoint->dump(true);
     delete tree->aln;
 	delete tree;
 }
