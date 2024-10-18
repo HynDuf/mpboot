@@ -589,6 +589,7 @@ void parseArg(int argc, char *argv[], Params &params) {
     params.print_all_checkpoints = false;
     params.ignore_checkpoint = true;
     params.checkpoint_dump_interval = 60;
+    params.ckp_rerun = false;
     params.tbr_pars = false;
     params.tbr_mintrav = 1;
     params.tbr_maxtrav = 5;
@@ -928,6 +929,11 @@ void parseArg(int argc, char *argv[], Params &params) {
                 params.ignore_checkpoint = false;
                 params.print_all_checkpoints = true;
                 cout << "Note that checkpoint currently only works with normal treesearch and normal bootstrap!\n";
+				continue;
+			}
+            if (strcmp(argv[cnt], "-ckp_rerun") == 0) {
+                params.ignore_checkpoint = false;
+                params.ckp_rerun = true;
 				continue;
 			}
 			if (strcmp(argv[cnt], "-ckptime") == 0) {

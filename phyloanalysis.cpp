@@ -1169,7 +1169,7 @@ void computeInitialTree(Params &params, IQTree &iqtree, string &dist_file, int &
 
 		resetBranches(iqtree.pllInst);
 		pllTreeToNewick(iqtree.pllInst->tree_string, iqtree.pllInst, iqtree.pllPartitions, iqtree.pllInst->start->back,
-				PLL_TRUE, PLL_TRUE, PLL_FALSE, PLL_FALSE, PLL_FALSE, PLL_SUMMARIZE_LH, PLL_FALSE, PLL_FALSE);
+				params.print_branch_lengths, PLL_TRUE, PLL_FALSE, PLL_FALSE, PLL_FALSE, PLL_SUMMARIZE_LH, PLL_FALSE, PLL_FALSE);
 		iqtree.readTreeString(string(iqtree.pllInst->tree_string));
 		iqtree.initializeAllPartialPars();
 		iqtree.clearAllPartialLH();
@@ -1279,7 +1279,7 @@ int initCandidateTreeSet(Params &params, IQTree &iqtree, int numInitTrees) {
 				pllComputeRandomizedStepwiseAdditionParsimonyTree(iqtree.pllInst, iqtree.pllPartitions, params.sprDist);
 
 	        pllTreeToNewick(iqtree.pllInst->tree_string, iqtree.pllInst, iqtree.pllPartitions,
-					iqtree.pllInst->start->back, PLL_TRUE, PLL_TRUE, PLL_FALSE, PLL_FALSE, PLL_FALSE,
+					iqtree.pllInst->start->back, params.print_branch_lengths, PLL_TRUE, PLL_FALSE, PLL_FALSE, PLL_FALSE,
 					PLL_SUMMARIZE_LH, PLL_FALSE, PLL_FALSE);
 			curParsTree = string(iqtree.pllInst->tree_string);
         } else {
@@ -2187,7 +2187,6 @@ void convertAlignment(Params &params, IQTree *iqtree) {
  * TOP-LEVEL FUNCTION
  ***********************************************************/
 void runPhyloAnalysis(Params &params, Checkpoint *checkpoint) {
-    cout << "runPhyloAnalysis\n";
     checkpoint->putBool("finished", false);
     checkpoint->setDumpInterval(params.checkpoint_dump_interval);
 

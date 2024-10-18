@@ -419,6 +419,7 @@ struct Params {
     bool ignore_checkpoint;
     /** time (in seconds) between checkpoint dump */
     int checkpoint_dump_interval;
+    bool ckp_rerun;
 
 	/**
 	 *  Number of starting parsimony trees

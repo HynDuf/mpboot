@@ -2194,13 +2194,13 @@ int main(int argc, char *argv[])
     
     bool append_log = false;
     
-    if (!params.ignore_checkpoint && fileExists(filename)) {
+    if (!params.ignore_checkpoint && !params.ckp_rerun && fileExists(filename)) {
         checkpoint->load();
         if (checkpoint->hasKey("finished")) {
             if (checkpoint->getBool("finished")) {
                 delete checkpoint;
                 outError("Checkpoint (" + filename + ") indicates that a previous run successfully finished\n" +
-                    "Remove `-ckp` (or `-ckp_all`) option if you really want to rerun the analysis and overwrite all output files.\n");
+                    "Add -ckp_rerun option if you really want to rerun the analysis and overwrite all output files.\n");
             } else {
                 append_log = true;
             }
@@ -2353,32 +2353,67 @@ int main(int argc, char *argv[])
     // checkpoint general run information
     checkpoint->startStruct("mpboot");
     string command;
+    string num_cmds;
     
-    if (CKP_RESTORE_STRING(command)) {
+    if (CKP_RESTORE_STRING(command) && CKP_RESTORE_STRING(num_cmds)) {
         // compare command between saved and current commands
+        int num = 0;
+        for (char c : num_cmds) {
+            num = num * 10 + (c - '0');
+        }
         stringstream ss(command);
-        string str;
+        string str, lst;
         bool mismatch = false;
-        for (int i = 1; i < argc; i++) {
-            if (!(ss >> str)) {
-                outWarning("Number of command-line arguments differs from checkpoint");
-                mismatch = true;
-                break;
+        if (argc != num) {
+            outWarning("Number of command-line arguments differs from checkpoint (" + num_cmds + ")");
+            mismatch = true;
+        } else {
+            map<string, string> cmdArgs;
+            for (int i = 1; i < argc; i++) {
+                if (!(ss >> str)) {
+                    outWarning("Number of command-line arguments differs from checkpoint");
+                    mismatch = true;
+                    break;
+                }
+                if (str[0] == '-') {
+                    cmdArgs[str] = "";
+                    lst = str;
+                } else {
+                    cmdArgs[lst] = str;
+                }
             }
-            if (str != argv[i]) {
-                outWarning((string)"Command-line argument `" + argv[i] + "` differs from checkpoint `" + str + "`");
-                mismatch = true;
+            for (int i = 1; i < argc; i++) {
+                if (argv[i][0] == '-') {
+                    if (cmdArgs.find(argv[i]) == cmdArgs.end()) {
+                        outWarning((string)"Command-line argument `" + argv[i] + "` doesn't exist in checkpoint!");
+                        mismatch = true;
+                    }
+                    lst = argv[i];
+                } else {
+                    if (cmdArgs.find(lst) != cmdArgs.end() && cmdArgs[lst] != argv[i]) {
+                        outWarning((string)"Command-line argument `" + lst + " " + argv[i] + "` is different from `" + lst + " " + cmdArgs[lst] +  "` in checkpoint!");
+                        mismatch = true;
+                    }
+                }
             }
         }
         if (mismatch) {
-            outWarning("Command-line differs from checkpoint!");
+            outError("Command-line differs from checkpoint!\nAdd -ckp_rerun option if you really want to rerun the analysis and overwrite all output files.\n");
         }
         command = "";
+        num_cmds = "";
     }
     
     for (int i = 1; i < argc; i++)
         command += string(" ") + argv[i];
+    int num = argc;
+    while (num > 0) {
+        num_cmds += (num % 10) + '0';
+        num /= 10;
+    }
+    reverse(num_cmds.begin(), num_cmds.end());
     CKP_SAVE(command);
+    CKP_SAVE(num_cmds);
     int seed = params.ran_seed;
     CKP_SAVE(seed);
     CKP_SAVE(cur_time);
