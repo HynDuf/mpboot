@@ -60,22 +60,39 @@ void IQTree::setCheckpoint(Checkpoint* checkpoint)
 
 void IQTree::saveUFBoot(Checkpoint* checkpoint)
 {
+    if (params->ignore_checkpoint == true) {
+        return;
+    }
+    if (treels.empty()) {
+        return;
+    }
     checkpoint->startStruct("UFBoot");
     CKP_SAVE(cur_boot_sample);
     CKP_SAVE(logl_cutoff);
     int boot_splits_size = boot_splits.size();
     CKP_SAVE(boot_splits_size);
+    vector<pair<int, int>> vec;
+    for (int id = 0; id < boot_samples_pars.size(); id++) {
+        vec.push_back({ boot_trees[id], id });
+    }
+    sort(vec.begin(), vec.end());
+    vector<string> tree(boot_samples_pars.size());
+    for (auto& it : treels) {
+        int low = lower_bound(vec.begin(), vec.end(), pair<int, int> { it.second, 0 }) - vec.begin();
+        int up = upper_bound(vec.begin(), vec.end(), pair<int, int> { it.second, boot_samples_pars.size() }) - vec.begin();
+        for (int i = low; i < up; ++i) {
+            tree[vec[i].second] = it.first;
+        }
+    }
     checkpoint->startList(boot_samples_pars.size());
     for (int id = 0; id < boot_samples_pars.size(); id++) {
         checkpoint->addListElement();
         stringstream ss;
         ss.precision(10);
-        ss << boot_counts[id] << " " << boot_logl[id] << " " << boot_trees[id];
+        ss << boot_counts[id] << " " << boot_logl[id] << " " << tree[id];
         checkpoint->put("", ss.str());
     }
     checkpoint->endList();
-    checkpoint->saveMap("treels", treels);
-    CKP_VECTOR_SAVE(treels_logl);
     checkpoint->endStruct();
 }
 
@@ -94,8 +111,6 @@ void IQTree::saveCheckpoint()
             checkpoint->endStruct();
         }
     }
-
-    PhyloTree::saveCheckpoint();
 }
 
 void IQTree::restoreUFBoot(Checkpoint* checkpoint)
@@ -105,17 +120,23 @@ void IQTree::restoreUFBoot(Checkpoint* checkpoint)
     int id;
     checkpoint->startList(params->gbo_replicates);
     checkpoint->setListElement(0);
+    treels.clear();
+    treels_logl.clear();
     for (id = 0; id < boot_samples_pars.size(); id++) {
         checkpoint->addListElement();
         string str;
         checkpoint->getString("", str);
         assert(!str.empty());
         stringstream ss(str);
-        ss >> boot_counts[id] >> boot_logl[id] >> boot_trees[id];
+        string tree;
+        ss >> boot_counts[id] >> boot_logl[id] >> tree;
+        if (treels.find(tree) == treels.end()) {
+            treels[tree] = treels.size();
+            treels_logl.push_back(boot_logl[id]);
+        }
+        boot_trees[id] = treels[tree];
     }
     checkpoint->endList();
-    checkpoint->restoreMap("treels", treels);
-    CKP_VECTOR_RESTORE(treels_logl);
     checkpoint->endStruct();
 }
 
@@ -133,20 +154,27 @@ void IQTree::restoreCheckpoint()
         //        CKP_RESTORE(max_candidate_trees);
         CKP_RESTORE(logl_cutoff);
         CKP_RESTORE(cur_boot_sample);
-        checkpoint->restoreMap("treels", treels);
-        CKP_VECTOR_RESTORE(treels_logl);
         // save boot_samples and boot_trees
         int id = 0;
         checkpoint->startList(params->gbo_replicates);
         boot_trees.resize(params->gbo_replicates);
         boot_logl.resize(params->gbo_replicates);
         boot_counts.resize(params->gbo_replicates);
-        for (id = 0; id < params->gbo_replicates; id++) {
+        treels.clear();
+        treels_logl.clear();
+        for (id = 0; id < boot_samples_pars.size(); id++) {
             checkpoint->addListElement();
             string str;
             checkpoint->getString("", str);
+            assert(!str.empty());
             stringstream ss(str);
-            ss >> boot_counts[id] >> boot_logl[id] >> boot_trees[id];
+            string tree;
+            ss >> boot_counts[id] >> boot_logl[id] >> tree;
+            if (treels.find(tree) == treels.end()) {
+                treels[tree] = treels.size();
+                treels_logl.push_back(boot_logl[id]);
+            }
+            boot_trees[id] = treels[tree];
         }
         checkpoint->endList();
         int boot_splits_size = 0;
@@ -563,7 +591,7 @@ void IQTree::initTopologyByPLLRandomAdition(Params& params)
     pllComputeRandomizedStepwiseAdditionParsimonyTree(tmpInst, tmpPartitions,
         1);
     pllTreeToNewick(tmpInst->tree_string, tmpInst, tmpPartitions,
-        tmpInst->start->back, PLL_TRUE, PLL_TRUE, 0, 0, 0,
+        tmpInst->start->back, params.print_branch_lengths, PLL_TRUE, 0, 0, 0,
         PLL_SUMMARIZE_LH, 0, 0);
     string treeString = string(tmpInst->tree_string);
     readTreeString(treeString);
@@ -1728,7 +1756,7 @@ string IQTree::optimizeModelParameters(bool printInfo)
         double etime = getCPUTime();
         cout << etime - stime << " seconds (logl: " << curScore << ")" << endl;
         pllTreeToNewick(pllInst->tree_string, pllInst, pllPartitions,
-            pllInst->start->back, PLL_TRUE, PLL_TRUE, PLL_FALSE,
+            pllInst->start->back, params->print_branch_lengths, PLL_TRUE, PLL_FALSE,
             PLL_FALSE, PLL_FALSE, PLL_SUMMARIZE_LH, PLL_FALSE,
             PLL_FALSE);
         if (printInfo) {
@@ -1812,7 +1840,7 @@ string IQTree::optimizeBranches(int maxTraversal)
         pllOptimizeBranchLengths(pllInst, pllPartitions, maxTraversal);
         curScore = pllInst->likelihood;
         pllTreeToNewick(pllInst->tree_string, pllInst, pllPartitions,
-            pllInst->start->back, PLL_TRUE, PLL_TRUE, PLL_FALSE,
+            pllInst->start->back, params->print_branch_lengths, PLL_TRUE, PLL_FALSE,
             PLL_FALSE, PLL_FALSE, PLL_SUMMARIZE_LH, PLL_FALSE,
             PLL_FALSE);
         tree = string(pllInst->tree_string);
@@ -1866,8 +1894,8 @@ double IQTree::doTreeSearch()
 
     if (params->ignore_checkpoint) {
         stop_rule.addImprovedIteration(1);
-    } else {
-        cout << "Continue from iteration " << stop_rule.getCurIt() + 1 << endl;
+    } else if (stop_rule.getCurIt() > 1) {
+        cout << "Continue from iteration " << stop_rule.getCurIt() << endl;
     }
     searchinfo.curPerStrength = params->initPerStrength;
 
@@ -2446,7 +2474,7 @@ string IQTree::doNNISearch(int& nniCount, int& nniSteps)
             pllNewickParseDestroy(&sprStartTree);
 
             pllTreeToNewick(pllInst->tree_string, pllInst, pllPartitions,
-                pllInst->start->back, PLL_TRUE, PLL_TRUE, 0, 0, 0,
+                pllInst->start->back, params->print_branch_lengths, PLL_TRUE, 0, 0, 0,
                 PLL_SUMMARIZE_LH, 0, 0);
             treeString = string(pllInst->tree_string);
             if (treeString == treeString1)
@@ -2470,7 +2498,7 @@ string IQTree::doNNISearch(int& nniCount, int& nniSteps)
             outError("Unsupported -pll -sp combination!");
         curScore = pllOptimizeNNI(nniCount, nniSteps, searchinfo);
         pllTreeToNewick(pllInst->tree_string, pllInst, pllPartitions,
-            pllInst->start->back, PLL_TRUE, PLL_TRUE, 0, 0, 0,
+            pllInst->start->back, params->print_branch_lengths, PLL_TRUE, 0, 0, 0,
             PLL_SUMMARIZE_LH, 0, 0);
         treeString = string(pllInst->tree_string);
         readTreeString(treeString);
@@ -3228,7 +3256,7 @@ void IQTree::optimizeBootTrees()
             boot_trees[sample] = tree_index;
             boot_logl[sample] = curScore;
             cur_boot_sample = sample;
-            if (sample + 1 % 50 == 0) {
+            if ((sample + 1) % 50 == 0) {
                 saveUFBoot(checkpoint);
                 checkpoint->dump();
             }
@@ -3685,7 +3713,7 @@ void IQTree::saveCurrentTree(double cur_logl)
     if (params->store_candidate_trees) {
         if (params->spr_parsimony && !(params->ratchet_iter >= 0 && on_ratchet_hclimb1 && params->hclimb1_nni)) {
             pllTreeToNewick(pllInst->tree_string, pllInst, pllPartitions,
-                pllInst->start->back, PLL_TRUE, PLL_TRUE, 0, 0, 0,
+                pllInst->start->back, params->print_branch_lengths, PLL_TRUE, 0, 0, 0,
                 PLL_SUMMARIZE_LH, 0, 0);
             string imd_tree = string(pllInst->tree_string);
             readTreeString(imd_tree);
@@ -3913,7 +3941,7 @@ void IQTree::saveCurrentTree(double cur_logl)
                         if (params->spr_parsimony && !(params->ratchet_iter >= 0 && on_ratchet_hclimb1 && params->hclimb1_nni)) {
                             pllTreeToNewick(pllInst->tree_string, pllInst,
                                 pllPartitions, pllInst->start->back,
-                                PLL_TRUE, PLL_TRUE, 0, 0, 0,
+                                params->print_branch_lengths, PLL_TRUE, 0, 0, 0,
                                 PLL_SUMMARIZE_LH, 0, 0);
                             string imd_tree = string(pllInst->tree_string);
                             readTreeString(imd_tree);
@@ -3957,7 +3985,7 @@ void IQTree::saveCurrentTree(double cur_logl)
                             if (params->spr_parsimony && !(params->ratchet_iter >= 0 && on_ratchet_hclimb1 && params->hclimb1_nni)) {
                                 pllTreeToNewick(pllInst->tree_string, pllInst,
                                     pllPartitions,
-                                    pllInst->start->back, PLL_TRUE,
+                                    pllInst->start->back, params->print_branch_lengths,
                                     PLL_TRUE, 0, 0, 0,
                                     PLL_SUMMARIZE_LH, 0, 0);
                                 string imd_tree = string(pllInst->tree_string);
@@ -4032,7 +4060,7 @@ void IQTree::saveCurrentTree(double cur_logl)
                         if (params->spr_parsimony && !(params->ratchet_iter >= 0 && on_ratchet_hclimb1 && params->hclimb1_nni)) {
                             pllTreeToNewick(pllInst->tree_string, pllInst,
                                 pllPartitions, pllInst->start->back,
-                                PLL_TRUE, PLL_TRUE, 0, 0, 0,
+                                params->print_branch_lengths, PLL_TRUE, 0, 0, 0,
                                 PLL_SUMMARIZE_LH, 0, 0);
                             string imd_tree = string(pllInst->tree_string);
                             readTreeString(imd_tree);
@@ -4132,7 +4160,7 @@ void IQTree::saveCurrentTree(double cur_logl)
                         if (params->spr_parsimony && !(params->ratchet_iter >= 0 && on_ratchet_hclimb1 && params->hclimb1_nni)) {
                             pllTreeToNewick(pllInst->tree_string, pllInst,
                                 pllPartitions, pllInst->start->back,
-                                PLL_TRUE, PLL_TRUE, 0, 0, 0,
+                                params->print_branch_lengths, PLL_TRUE, 0, 0, 0,
                                 PLL_SUMMARIZE_LH, 0, 0);
                             string imd_tree = string(pllInst->tree_string);
                             readTreeString(imd_tree);
@@ -4917,7 +4945,7 @@ void IQTree::printPhylolibModelParams(const char* suffix) {
 void IQTree::printPhylolibTree(const char* suffix)
 {
     pllTreeToNewick(pllInst->tree_string, pllInst, pllPartitions,
-        pllInst->start->back, PLL_TRUE, 1, 0, 0, 0,
+        pllInst->start->back, params->print_branch_lengths, 1, 0, 0, 0,
         PLL_SUMMARIZE_LH, 0, 0);
     char phylolibTree[1024];
     strcpy(phylolibTree, params->out_prefix);
