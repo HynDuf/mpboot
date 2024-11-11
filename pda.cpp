@@ -2364,25 +2364,33 @@ int main(int argc, char *argv[])
         stringstream ss(command);
         string str, lst;
         bool mismatch = false;
-        if (argc != num) {
+        map<string, string> cmdArgs;
+        int nargc = argc;
+        for (int i = 1; i < argc; i++) {
+            if (!(ss >> str)) {
+                outWarning("Number of command-line arguments differs from checkpoint");
+                mismatch = true;
+                break;
+            }
+            if (str == "-ckp_rerun") {
+                nargc--;
+                continue;
+            }
+            if (str[0] == '-') {
+                cmdArgs[str] = "";
+                lst = str;
+            } else {
+                cmdArgs[lst] = str;
+            }
+        }
+        if (nargc != num) {
             outWarning("Number of command-line arguments differs from checkpoint (" + num_cmds + ")");
             mismatch = true;
         } else {
-            map<string, string> cmdArgs;
             for (int i = 1; i < argc; i++) {
-                if (!(ss >> str)) {
-                    outWarning("Number of command-line arguments differs from checkpoint");
-                    mismatch = true;
-                    break;
+                if (strcmp(argv[i], "-ckp_rerun") == 0) {
+                    continue;
                 }
-                if (str[0] == '-') {
-                    cmdArgs[str] = "";
-                    lst = str;
-                } else {
-                    cmdArgs[lst] = str;
-                }
-            }
-            for (int i = 1; i < argc; i++) {
                 if (argv[i][0] == '-') {
                     if (cmdArgs.find(argv[i]) == cmdArgs.end()) {
                         outWarning((string)"Command-line argument `" + argv[i] + "` doesn't exist in checkpoint!");
@@ -2404,9 +2412,15 @@ int main(int argc, char *argv[])
         num_cmds = "";
     }
     
-    for (int i = 1; i < argc; i++)
+    int nargc = argc;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-ckp_rerun") == 0) {
+            nargc--;
+            continue;
+        }
         command += string(" ") + argv[i];
-    int num = argc;
+    }
+    int num = nargc;
     while (num > 0) {
         num_cmds += (num % 10) + '0';
         num /= 10;
