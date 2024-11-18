@@ -1658,7 +1658,6 @@ void printFinalSearchInfo(Params &params, IQTree &iqtree, double search_cpu_time
  *  MAIN TREE RECONSTRUCTION
  ***********************************************************/
 void runTreeReconstruction(Params &params, string &original_model, IQTree &iqtree, vector<ModelInfo> &model_info) {
-    cout << "runTreeReconstruction\n";
 
     string dist_file;
     params.startCPUTime = getCPUTime();
