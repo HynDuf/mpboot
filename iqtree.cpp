@@ -3779,7 +3779,12 @@ void IQTree::saveCurrentTree(double cur_logl)
     double* pattern_lh_orig = NULL;
 
     if (params->maximum_parsimony) {
-
+        if (params->spr_parsimony && !(params->ratchet_iter >= 0 &&
+                                       on_ratchet_hclimb1 && params->hclimb1_nni)) {
+          int test_pars = 0;
+          pllComputePatternParsimony(pllInst, pllPartitions, _pattern_pars,
+                                     &test_pars);
+        }
         if (!params->auto_vectorize && reps_segments > 1 && boot_samples_pars_remain_bounds[0] == NULL) { // do this once
             double starts = getCPUTime();
             cout << "NOTE: REPS computation is segmented into " << reps_segments
