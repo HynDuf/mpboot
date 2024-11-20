@@ -585,7 +585,7 @@ void setBitsAll(UINT* &bit_vec, int num) {
  * A|C|G|T -> 15
  */
 UINT dna_state_map[128];
-UINT bin_state_map[2];
+UINT bin_state_map[3];
 UINT prot_state_map[128];
 /*
  * this will recompute for 2 DNA states as input and map to result of Fitch algorithm:
@@ -605,6 +605,7 @@ UINT bin_fitch_step[16];
 void precomputeFitchInfo() {
 	bin_state_map[0] = 1; // '0'
 	bin_state_map[1] = 2; // '1'
+	bin_state_map[2] = 1+2; // STATE_UNKNOWN
 
 	dna_state_map[0] = 1; // A
 	dna_state_map[1] = 2; // C
