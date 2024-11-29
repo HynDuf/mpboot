@@ -17,6 +17,7 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
+#include "aco.h"
 #include "stoprule.h"
 #include "timeutil.h"
 
@@ -110,6 +111,9 @@ bool StopRule::meetStopCondition(int cur_iteration, double cur_correlation) {
 			return cur_iteration > predicted_iteration;
 	case SC_UNSUCCESS_ITERATION:
 		return cur_iteration > getLastImprovedIteration() + unsuccess_iteration;
+    case SC_ACO_UNSUCCESS_ITERATION:
+        return cur_iteration > getLastImprovedIteration() +
+                                   aco->getNumStopCond(unsuccess_iteration);
 	case SC_BOOTSTRAP_CORRELATION:
 		return ((cur_correlation >= min_correlation) && (cur_iteration > getLastImprovedIteration() + unsuccess_iteration))
 				|| cur_iteration > max_iteration;
@@ -134,6 +138,10 @@ double StopRule::getRemainingTime(int cur_it, double cur_correlation) {
 	case SC_UNSUCCESS_ITERATION:
 		niterations = getLastImprovedIteration() + unsuccess_iteration;
 		break;
+    case SC_ACO_UNSUCCESS_ITERATION:
+        niterations = getLastImprovedIteration() +
+                      aco->getNumStopCond(unsuccess_iteration);
+        break;
 	case SC_BOOTSTRAP_CORRELATION:
 		niterations = ((cur_it+step_iteration-1)/step_iteration)*step_iteration;
 		if (cur_correlation >= min_correlation)

@@ -365,7 +365,7 @@ enum ModelTestCriterion {
         Stopping condition type
  */
 enum STOP_CONDITION {
-    SC_FIXED_ITERATION, SC_WEIBULL, SC_UNSUCCESS_ITERATION, SC_BOOTSTRAP_CORRELATION, SC_REAL_TIME
+    SC_FIXED_ITERATION, SC_WEIBULL, SC_UNSUCCESS_ITERATION, SC_BOOTSTRAP_CORRELATION, SC_REAL_TIME, SC_ACO_UNSUCCESS_ITERATION,
 };
 
 enum IQP_ASSESS_QUARTET {
@@ -420,6 +420,21 @@ struct Params {
     /** time (in seconds) between checkpoint dump */
     int checkpoint_dump_interval;
     bool ckp_rerun;
+
+    /**
+     * Use Ant Colony Optimization Algorithm or not?
+     */
+    bool aco;
+    /**
+     * Ant Colony Optimization Parameters
+     */
+    int aco_update_iter;
+    double aco_evaporation_rate;
+    double aco_nni_prior;
+    double aco_spr_prior;
+    double aco_tbr_prior;
+    bool aco_once;
+    bool aco_report_usage;
 
 	/**
 	 *  Number of starting parsimony trees

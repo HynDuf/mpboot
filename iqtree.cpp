@@ -18,6 +18,7 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 #include "iqtree.h"
+#include "aco.h"
 #include "mexttree.h"
 #include "model/modelgtr.h"
 #include "model/rategamma.h"
@@ -42,6 +43,8 @@ int pllCostNstates; // Diep: For weighted version
 parsimonyNumber* vectorCostMatrix = NULL; // BQM: vectorized cost matrix
 int pllRepsSegments;
 int* pllSegmentUpper;
+
+ACOAlgo *aco = new ACOAlgo();
 
 IQTree::IQTree()
     : PhyloTree()
@@ -327,7 +330,9 @@ if (params.gbo_replicates && params.maximum_parsimony)
 
     // tree.setIQPIterations(params.stop_condition, params.stop_confidence,
     // params.min_iterations, params.max_iterations);
-
+    if (params.aco) {
+        aco->setUpParamsAndGraph(&params);
+    }
     stop_rule.initialize(params);
 
     // tree.setIQPAssessQuartet(params.iqp_assess_quartet);
@@ -1901,7 +1906,9 @@ double IQTree::doTreeSearch()
 
     double cur_correlation = 0.0;
     int ratchet_iter_count = 0;
-
+    if (params->aco) {
+        aco->initBestScore(-bestScore);
+    }
     /*====================================================
      * MAIN LOOP OF THE IQ-TREE ALGORITHM
      *====================================================*/
@@ -1974,7 +1981,9 @@ double IQTree::doTreeSearch()
         }
 
         Alignment* saved_aln = aln;
-
+        if (params->aco) {
+            aco->curNode = ACOAlgo::ROOT;
+        }
         /*--------------------------------------------------------------------------
          * PARSIMONY RATCHET-LIKE IDEA
          * -------------------------------------------------------------------------*/
@@ -2103,7 +2112,11 @@ double IQTree::doTreeSearch()
         int nni_count = 0;
         int nni_steps = 0;
 
-        imd_tree = doNNISearch(nni_count, nni_steps);
+        if (params->aco == true) {
+            imd_tree = doAntColonySearch(nni_count, nni_steps);
+        } else {
+            imd_tree = doNNISearch(nni_count, nni_steps);
+        }
 
         if (iqp_assess_quartet == IQP_BOOTSTRAP) {
             // restore alignment
@@ -2138,7 +2151,11 @@ double IQTree::doTreeSearch()
             int nni_count = 0;
             int nni_steps = 0;
             on_ratchet_hclimb2 = true;
-            imd_tree = doNNISearch(nni_count, nni_steps);
+            if (params->aco == true) {
+                imd_tree = doAntColonySearch(nni_count, nni_steps);
+            } else {
+                imd_tree = doNNISearch(nni_count, nni_steps);
+            }
             // update current score
             initializeAllPartialLh();
             clearAllPartialLH();
@@ -2350,7 +2367,10 @@ endl;
     }
 
     readTreeString(bestTreeString);
-
+    if (params->aco) {
+        aco->reportUsage();
+        aco->reportDifficulty();
+    }
     if (testNNI)
         outNNI.close();
     if (params->write_intermediate_trees)
@@ -2390,6 +2410,124 @@ endl;
     return bestScore;
 }
 
+string IQTree::doAntColonySearch(int &nniCount, int &nniSteps) {
+    string treeString;
+    if (params->maximum_parsimony && params->spr_parsimony &&
+        (params->snni || params->pll)) { // SPR for mpars
+        if (on_opt_btree) {
+            if (pllPartitions) {
+                myPartitionsDestroy(pllPartitions);
+                pllPartitions = NULL;
+            }
+            if (pllAlignment) {
+                pllAlignmentDataDestroy(pllAlignment);
+                pllAlignment = NULL;
+            }
+            if (pllInst) {
+                pllDestroyInstance(pllInst);
+                pllInst = NULL;
+            }
+            // Diep: sorting the boot aln is needed for branch and bound
+            // weighted search
+            PatternComp pcomp;
+            sort(aln->begin(), aln->end(), pcomp);
+            aln->updateSitePatternAfterOptimized();
+            initializePLL(*params); // because the set of patterns might be a
+                                    // subset of the orig
+            pllNewickTree *btree =
+                pllNewickParseString(getTreeString().c_str());
+            assert(btree != NULL);
+            pllTreeInitTopologyNewick(pllInst, btree, PLL_FALSE);
+            pllNewickParseDestroy(&btree);
+            // update segmenting information
+            if (params->sankoff_cost_file) {
+                doSegmenting();
+                pllRepsSegments = reps_segments;
+                pllSegmentUpper = segment_upper;
+            }
+        }
+        //		if(false){
+        if (on_ratchet_hclimb1 && params->hclimb1_nni) {
+            curScore = optimizeNNI(nniCount, nniSteps);
+            treeString = getTreeString();
+        } else {
+            int treeOper = aco->moveNextNode();
+            int newScore = 0;
+            string treeString1 = getTreeString();
+            size_t index = 0;
+            while (true) {
+                /* Locate the substring to replace. */
+                index = treeString1.find(":nan", index);
+                if (index == std::string::npos)
+                    break;
+                /* Make the replacement. */
+                treeString1.replace(index, 4, ":0");
+                /* Advance index forward so the next iteration doesn't pick
+                 * it up as well. */
+                index += 4;
+            }
+            int max_spr_rad = params->spr_maxtrav;
+            if (on_opt_btree && params->opt_btree_nni)
+                params->spr_maxtrav = 1;
+            pllNewickTree *startTree =
+                pllNewickParseString(treeString1.c_str());
+            assert(startTree != NULL);
+            pllTreeInitTopologyNewick(pllInst, startTree, PLL_FALSE);
+            if (aco->getNodeTag(treeOper) == ACOAlgo::NNI) {
+                pllOptimizeSprParsimony(pllInst, pllPartitions, 1, 1, this);
+            } else if (aco->getNodeTag(treeOper) == ACOAlgo::SPR) {
+                pllOptimizeSprParsimony(pllInst, pllPartitions,
+                                        params->spr_mintrav, max_spr_rad, this);
+            } else {
+                pllOptimizeTbrParsimony(pllInst, pllPartitions,
+                                        params->tbr_mintrav,
+                                        params->tbr_maxtrav, this);
+            }
+            pllNewickParseDestroy(&startTree);
+            pllTreeToNewick(pllInst->tree_string, pllInst, pllPartitions,
+                            pllInst->start->back, PLL_TRUE, PLL_TRUE, 0, 0, 0,
+                            PLL_SUMMARIZE_LH, 0, 0);
+            treeString = string(pllInst->tree_string);
+            if (treeString == treeString1)
+                outError("Tree string stays the same after SPR.");
+            readTreeString(treeString);
+            initializeAllPartialPars();
+            clearAllPartialLH();
+            newScore = -computeParsimony();
+            // deallocation will occur once at the end of
+            // runTreeReconstruction() if not running ratchet oct 23: in
+            // non-ratchet iteration, free is not triggered
+            if ((((params->ratchet_iter >= 0 && (!on_ratchet_hclimb2)) ||
+                  on_opt_btree) &&
+                 (!params->hclimb1_nni))) {
+                //			if(((params->ratchet_iter >= 0) &&
+                // (!params->hclimb1_nni))) {
+                _pllFreeParsimonyDataStructures(pllInst, pllPartitions);
+            }
+            // cout << "Cur score: " << curScore << '\n';
+            aco->updateNewPheromone(-curScore, -newScore);
+            // cout << "New score: " << newScore << '\n';
+            // cout << "Best score: " << bestScore << '\n';
+            curScore = newScore;
+        }
+    } else if (params->pll) {
+        if (params->partition_file)
+            outError("Unsupported -pll -sp combination!");
+        curScore = pllOptimizeNNI(nniCount, nniSteps, searchinfo);
+        pllTreeToNewick(pllInst->tree_string, pllInst, pllPartitions,
+                        pllInst->start->back, PLL_TRUE, PLL_TRUE, 0, 0, 0,
+                        PLL_SUMMARIZE_LH, 0, 0);
+        treeString = string(pllInst->tree_string);
+        readTreeString(treeString);
+    } else {
+        curScore = optimizeNNI(nniCount, nniSteps);
+        if (isSuperTree()) {
+            ((PhyloSuperTree *)this)->computeBranchLengths();
+        }
+        treeString = getTreeString();
+    }
+    return treeString;
+}
 /****************************************************************************
  Fast Nearest Neighbor Interchange by maximum likelihood
  ****************************************************************************/

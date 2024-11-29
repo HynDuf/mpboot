@@ -590,6 +590,14 @@ void parseArg(int argc, char *argv[], Params &params) {
     params.ignore_checkpoint = true;
     params.checkpoint_dump_interval = 60;
     params.ckp_rerun = false;
+    params.aco = false;
+    params.aco_update_iter = 5;
+    params.aco_evaporation_rate = 0.1;
+    params.aco_nni_prior = 0.3;
+    params.aco_spr_prior = 0.4;
+    params.aco_tbr_prior = 0.4;
+    params.aco_once = false;
+    params.aco_report_usage = false;
     params.tbr_pars = false;
     params.tbr_mintrav = 1;
     params.tbr_maxtrav = 5;
@@ -918,6 +926,82 @@ void parseArg(int argc, char *argv[], Params &params) {
 			if (strcmp(argv[cnt], "-vvv") == 0
 					|| strcmp(argv[cnt], "-v3") == 0) {
 				verbose_mode = VB_DEBUG;
+				continue;
+			}
+            if (strcmp(argv[cnt], "-aco") == 0) {
+                params.aco = true;
+                params.stop_condition = SC_ACO_UNSUCCESS_ITERATION;
+                continue;
+            }
+            if (strcmp(argv[cnt], "-aco_update_iter") == 0) {
+                cnt++;
+                if (cnt >= argc) {
+                    throw "Use -aco_update_iter <double>";
+                }
+                params.aco_update_iter = convert_int(argv[cnt]);
+                continue;
+            }
+            if (strcmp(argv[cnt], "-aco_evaporation_rate") == 0) {
+                cnt++;
+                if (cnt >= argc) {
+                    throw "Use -aco_evaporation_rate <double>";
+                }
+                params.aco_evaporation_rate = convert_double(argv[cnt]);
+                continue;
+            }
+            if (strcmp(argv[cnt], "-aco_nni_prior") == 0) {
+                cnt++;
+                if (cnt >= argc) {
+                    throw "Use -aco_nni_prior <double>";
+                }
+                params.aco_nni_prior = convert_double(argv[cnt]);
+                continue;
+            }
+            if (strcmp(argv[cnt], "-aco_spr_prior") == 0) {
+                cnt++;
+                if (cnt >= argc) {
+                    throw "Use -aco_spr_prior <double>";
+                }
+                params.aco_spr_prior = convert_double(argv[cnt]);
+                continue;
+            }
+            if (strcmp(argv[cnt], "-aco_tbr_prior") == 0) {
+                cnt++;
+                if (cnt >= argc) {
+                    throw "Use -aco_tbr_prior <double>";
+                }
+                params.aco_tbr_prior = convert_double(argv[cnt]);
+                continue;
+            }
+            if (strcmp(argv[cnt], "-aco_once") == 0) {
+                params.aco_once = true;
+                continue;
+            }
+            if (strcmp(argv[cnt], "-aco_report_usage") == 0) {
+                params.aco_report_usage = true;
+                continue;
+            }
+            if (strcmp(argv[cnt], "-ckp") == 0) {
+                params.ignore_checkpoint = false;
+                cout << "Note that checkpoint currently only works with normal treesearch and normal bootstrap!\n";
+				continue;
+			}
+            if (strcmp(argv[cnt], "-ckp_all") == 0) {
+                params.ignore_checkpoint = false;
+                params.print_all_checkpoints = true;
+                cout << "Note that checkpoint currently only works with normal treesearch and normal bootstrap!\n";
+				continue;
+			}
+            if (strcmp(argv[cnt], "-ckp_rerun") == 0) {
+                params.ignore_checkpoint = false;
+                params.ckp_rerun = true;
+				continue;
+			}
+			if (strcmp(argv[cnt], "-ckptime") == 0) {
+				cnt++;
+				if (cnt >= argc)
+					throw "Use -ckptime <checkpoint_time_interval_in_seconds>";
+				params.checkpoint_dump_interval = convert_int(argv[cnt]);
 				continue;
 			}
             if (strcmp(argv[cnt], "-ckp") == 0) {
