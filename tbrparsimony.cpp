@@ -3309,10 +3309,9 @@ int pllOptimizeTbrParsimony(pllInstance *tr, partitionList *pr, int mintrav,
         _updateInternalPllOnRatchet(tr, pr);
         _allocateParsimonyDataStructuresTBR(
             tr, pr, perSiteScores); // called once if not running ratchet
-    } else if (first_call || (iqtree && iqtree->on_opt_btree)) {
+	} else if(first_call || (iqtree && iqtree->on_opt_btree) || (pllCostMatrix && !perSiteScores && pllRemainderLowerBounds == NULL))
         _allocateParsimonyDataStructuresTBR(
             tr, pr, perSiteScores); // called once if not running ratchet
-    }
 
     if (first_call) {
         first_call = false;

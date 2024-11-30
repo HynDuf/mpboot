@@ -803,7 +803,7 @@ void IQTree::initializePLL(Params& params)
         pllSegmentUpper = segment_upper;
         pllRepsSegments = reps_segments;
         initializeCostMatrix();
-        if (params.tbr_pars) {
+        if (params.tbr_pars || params.aco) {
             initializeCostMatrixTBR();
         }
     } else {

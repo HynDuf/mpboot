@@ -2783,7 +2783,6 @@ static void determineUninformativeSites(pllInstance *tr, partitionList *pr, int 
 template<class Numeric, const int VECSIZE>
 static void compressSankoffDNA(pllInstance *tr, partitionList *pr, int *informative, int perSiteScores)
 {
-// cout << "Begin compressSankoffDNA()" << endl;
   size_t
     totalNodes,
     i,
@@ -3397,7 +3396,7 @@ int pllOptimizeSprParsimony(pllInstance * tr, partitionList * pr, int mintrav, i
 		// oct 23: in non-ratchet iteration, allocate is not triggered
 		_updateInternalPllOnRatchet(tr, pr);
 		_allocateParsimonyDataStructures(tr, pr, perSiteScores);
-	}else if(first_call || (iqtree && iqtree->on_opt_btree))
+	}else if(first_call || (iqtree && iqtree->on_opt_btree) || (pllCostMatrix && !perSiteScores && pllRemainderLowerBounds == NULL))
 		_allocateParsimonyDataStructures(tr, pr, perSiteScores); // called once if not running ratchet
 
 	if(first_call){
