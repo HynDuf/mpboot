@@ -319,7 +319,7 @@ public:
      */
     double pllOptimizeNNI(int &nniCount, int &nniSteps, SearchInfo &searchinfo);
 
-    string doAntColonySearch(int &nniCount, int &nniSteps);
+    string doAntColonySearch(int &nniCount, int &nniSteps, int treeOper, bool acoUpdate);
 
     /**
      * 		@brief Perform NNI search on the current tree topology

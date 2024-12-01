@@ -2111,9 +2111,13 @@ double IQTree::doTreeSearch()
          *---------------------------------------*/
         int nni_count = 0;
         int nni_steps = 0;
+        int acoTreeOper = 0;
 
         if (params->aco == true) {
-            imd_tree = doAntColonySearch(nni_count, nni_steps);
+            acoTreeOper = aco->moveNextNode();
+            // If non-ratchet -> Update ACO pheromone
+            // If ratchet -> Don't update this perturb tree, update below
+            imd_tree = doAntColonySearch(nni_count, nni_steps, acoTreeOper, !on_ratchet_hclimb1);
         } else {
             imd_tree = doNNISearch(nni_count, nni_steps);
         }
@@ -2152,7 +2156,7 @@ double IQTree::doTreeSearch()
             int nni_steps = 0;
             on_ratchet_hclimb2 = true;
             if (params->aco == true) {
-                imd_tree = doAntColonySearch(nni_count, nni_steps);
+                imd_tree = doAntColonySearch(nni_count, nni_steps, acoTreeOper, true);
             } else {
                 imd_tree = doNNISearch(nni_count, nni_steps);
             }
@@ -2410,7 +2414,7 @@ endl;
     return bestScore;
 }
 
-string IQTree::doAntColonySearch(int &nniCount, int &nniSteps) {
+string IQTree::doAntColonySearch(int &nniCount, int &nniSteps, int treeOper, bool acoUpdate) {
     string treeString;
     if (params->maximum_parsimony && params->spr_parsimony &&
         (params->snni || params->pll)) { // SPR for mpars
@@ -2451,8 +2455,6 @@ string IQTree::doAntColonySearch(int &nniCount, int &nniSteps) {
             curScore = optimizeNNI(nniCount, nniSteps);
             treeString = getTreeString();
         } else {
-            int treeOper = aco->moveNextNode();
-            int newScore = 0;
             string treeString1 = getTreeString();
             size_t index = 0;
             while (true) {
@@ -2493,7 +2495,7 @@ string IQTree::doAntColonySearch(int &nniCount, int &nniSteps) {
             readTreeString(treeString);
             initializeAllPartialPars();
             clearAllPartialLH();
-            newScore = -computeParsimony();
+            int newScore = -computeParsimony();
             // deallocation will occur once at the end of
             // runTreeReconstruction() if not running ratchet oct 23: in
             // non-ratchet iteration, free is not triggered
@@ -2505,7 +2507,9 @@ string IQTree::doAntColonySearch(int &nniCount, int &nniSteps) {
                 _pllFreeParsimonyDataStructures(pllInst, pllPartitions);
             }
             // cout << "Cur score: " << curScore << '\n';
-            aco->updateNewPheromone(-curScore, -newScore);
+            if (acoUpdate) {
+                aco->updateNewPheromone(-curScore, -newScore);
+            }
             // cout << "New score: " << newScore << '\n';
             // cout << "Best score: " << bestScore << '\n';
             curScore = newScore;
