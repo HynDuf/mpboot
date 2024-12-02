@@ -716,7 +716,7 @@ void _newviewSankoffParsimonyIterativeFastSIMD(pllInstance *tr,
             VectorClass total_score = 0;
 
             for (i = 0; i < patterns; i += VectorClass::size()) {
-                VectorClass cur_contrib = USHRT_MAX;
+                VectorClass cur_contrib = (globalParam->sankoff_short_int ? USHRT_MAX : UINT_MAX);
                 size_t i_states = i * states;
                 VectorClass *leftPtn = (VectorClass *)&left[i_states];
                 VectorClass *rightPtn = (VectorClass *)&right[i_states];
@@ -1147,7 +1147,7 @@ parsimonyNumber _evaluateSankoffParsimonyIterativeFastSIMD(pllInstance *tr,
                 size_t i_states = i * states;
                 VectorClass *leftPtn = (VectorClass *)&left[i_states];
                 VectorClass *rightPtn = (VectorClass *)&right[i_states];
-                VectorClass best_score = USHRT_MAX;
+                VectorClass best_score = (globalParam->sankoff_short_int ? USHRT_MAX : UINT_MAX);
                 Numeric *costRow = (Numeric *)vectorCostMatrix;
 
                 for (x = 0; x < states; x++) {
