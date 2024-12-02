@@ -2782,6 +2782,14 @@ void optimizeAlignment(IQTree * & tree, Params & params){
 //	if(checkDuplicatePattern(tree))
 //		cout << "FIRST CHECK: Alignment patterns are not created properly!" << endl;
 
+    // HynDuf: For Sankoff, first tree always use integer instead of unsigned short for overflow prevention. After detection, will use unsigned short if it's less likely to overflow.
+    bool sankoff_type_changed = false;
+    if (params.sankoff_cost_file != NULL) {
+        if (params.sankoff_short_int == true) {
+            sankoff_type_changed = true;
+            params.sankoff_short_int = false;
+        }
+    }
 	double start = getCPUTime();
 	tree->params = &params; // Diep: 2020-08-17, there are two variables with identical name as 'params'
 
@@ -2809,7 +2817,14 @@ void optimizeAlignment(IQTree * & tree, Params & params){
 	BootValTypePars * tmpPatternPars = tree->getPatternPars();
 	for(int i = 0; i < tree->getAlnNPattern(); i++){
 		(tree->aln)->at(i).ras_pars_score = tmpPatternPars[i];
+        if (sankoff_type_changed == true && (tree->aln)->at(i).ras_pars_score * (tree->aln)->at(i).frequency > 4 * USHRT_MAX / 5) {
+            sankoff_type_changed = false;
+            cout << "Found one pattern's cost which might potentially exceed unsigned short.\nUse int for sankoff score calculation instead (this has the same effect as turning on the `-short_off` option)\n";
+        }
 	}
+    if (sankoff_type_changed) {
+        params.sankoff_short_int = true;
+    }
 
 	if(!params.sort_alignment){
         tree->aln->updateSitePatternAfterOptimized();
