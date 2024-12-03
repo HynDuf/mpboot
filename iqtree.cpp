@@ -2111,13 +2111,17 @@ double IQTree::doTreeSearch()
          *---------------------------------------*/
         int nni_count = 0;
         int nni_steps = 0;
-        int acoTreeOper = 0;
 
         if (params->aco == true) {
-            acoTreeOper = aco->moveNextNode();
-            // If non-ratchet -> Update ACO pheromone
-            // If ratchet -> Don't update this perturb tree, update below
-            imd_tree = doAntColonySearch(nni_count, nni_steps, acoTreeOper, !on_ratchet_hclimb1);
+            if (on_ratchet_hclimb1) {
+                // If ratchet -> Don't update this perturb tree, update below
+                int acoTreeOper = aco->getNextNode();
+                imd_tree = doAntColonySearch(nni_count, nni_steps, acoTreeOper, false);
+            } else {
+                // If non-ratchet -> Update ACO pheromone
+                int acoTreeOper = aco->moveNextNode();
+                imd_tree = doAntColonySearch(nni_count, nni_steps, acoTreeOper, true);
+            }
         } else {
             imd_tree = doNNISearch(nni_count, nni_steps);
         }
@@ -2156,6 +2160,7 @@ double IQTree::doTreeSearch()
             int nni_steps = 0;
             on_ratchet_hclimb2 = true;
             if (params->aco == true) {
+                int acoTreeOper = aco->moveNextNode();
                 imd_tree = doAntColonySearch(nni_count, nni_steps, acoTreeOper, true);
             } else {
                 imd_tree = doNNISearch(nni_count, nni_steps);

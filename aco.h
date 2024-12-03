@@ -73,6 +73,7 @@ class ACOAlgo {
     vector<int> isOnPath;
     ACOAlgo();
     void setUpParamsAndGraph(Params *params);
+    int getNextNode();
     int moveNextNode();
     void addNode(NodeTag tag);
     void addEdge(int from, int to, double prior);

@@ -61,6 +61,28 @@ void ACOAlgo::addEdge(int from, int to, double prior) {
     nodes[from].adj.push_back(edgeId);
 }
 
+int ACOAlgo::getNextNode() {
+    double sum = 0;
+    int u = curNode;
+    for (int i = 0; i < nodes[u].adj.size(); ++i) {
+        int E = nodes[u].adj[i];
+        double prob = edges[E].pheromone * edges[E].prior;
+        sum += prob;
+    }
+    double random = random_double() * sum;
+    sum = 0;
+    for (int i = 0; i < nodes[u].adj.size(); ++i) {
+        int E = nodes[u].adj[i];
+        double prob = edges[E].pheromone * edges[E].prior;
+        sum += prob;
+        if (random < sum || i == nodes[u].adj.size() - 1) {
+            return edges[E].toNode;
+        }
+    }
+    assert(0);
+    return 0;
+}
+
 int ACOAlgo::moveNextNode() {
     double sum = 0;
     int u = curNode;
